@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deep Yield — space view prototype</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:#060914; overflow:hidden; color:#DDE3F0; font:13px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  canvas { display:block; width:100vw; height:100vh; cursor:grab; }
+  canvas:active { cursor:grabbing; }
+  .hud { position:fixed; pointer-events:none; text-shadow:0 1px 2px #000; }
+  .tl { left:18px; top:14px; display:flex; gap:18px; }
+  .tr { right:18px; top:14px; text-align:right; }
+  .bl { left:18px; bottom:14px; color:#8E98B3; }
+  .br { right:18px; bottom:14px; text-align:right; color:#8E98B3; }
+  .k { color:#8E98B3; }
+  .big { font-size:22px; font-weight:600; color:#F2F5FA; }
+  .warn { color:#F2B84B; }
+  .mint { color:#59D4B0; }
+  .ctl { position:fixed; left:18px; bottom:44px; display:flex; gap:6px; }
+  .ctl button { pointer-events:auto; background:rgba(14,20,40,.7); color:#DDE3F0; border:1px solid #2A3456; border-radius:4px; padding:6px 10px; font:inherit; cursor:pointer; }
+  .ctl button:hover { border-color:#59D4B0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud tl">
+  <div><span class="k">O₂</span> 82%</div>
+  <div><span class="k">H₂O</span> 64%</div>
+  <div><span class="k">Energy</span> <span class="warn">1,596 h</span></div>
+  <div><span class="k">Credits</span> <span class="mint">12,480</span></div>
+</div>
+<div class="hud tr"><div class="k">Operating hours</div><div class="big">1,284</div></div>
+<div class="hud br" id="freighterStatus">Next freighter in 12 h</div>
+<div class="ctl">
+  <button type="button" id="rotL">⟲ 45°</button>
+  <button type="button" id="rotR">⟳ 45°</button>
+  <button type="button" id="zoomOut">Zoom out to mining sites</button>
+  <button type="button" id="zoomIn">Back to platform</button>
+</div>
+<div class="hud bl">Drag to rotate · scroll to zoom</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const C = {
+  hull: 0xC7CDD6, hullDark: 0x7D8696, navy: 0x2B3550, glass: 0x6FB7E8,
+  gold: 0xE8B04A, green: 0x5DBB7A, storage: 0x8FA3B8, orange: 0xF07A3A, cyan: 0x4FD1E8,
+  blue: 0x5B8DEF, purple: 0xA77BDB, yellow: 0xF2D45C, red: 0xE5534B, mint: 0x59D4B0,
+  h2: 0xE36FA8, ice: 0xA9DDF5, iron: 0xC0714A, garden: 0x7FD89A,
+};
+const G = 7;
+const LAYOUT = [
+  [0, 0, 'command'], [1, 0, 'habitat'], [-1, 0, 'storage'], [0, -1, 'refinery'],
+  [1, -1, 'fusion'], [-1, -1, 'factory'], [0, 1, 'dock'], [-1, 1, 'assembly'],
+  [2, 0, 'turret'], [-2, -1, 'turret'], [1, 1, 'storage'], [0, -2, 'trade'],
+];
+const LINKS = [[[0,0],[1,0]], [[-1,0],[0,0]], [[0,-1],[0,0]], [[1,-1],[1,0]], [[-1,-1],[-1,0]],
+  [[0,0],[0,1]], [[-1,1],[0,1]], [[1,0],[2,0]], [[-2,-1],[-1,-1]], [[0,-1],[1,-1]], [[0,1],[1,1]], [[0,-2],[0,-1]]];
+
+const polar = (deg, r, y = 0) => new THREE.Vector3(Math.cos(deg * Math.PI / 180) * r, y, Math.sin(deg * Math.PI / 180) * r);
+const NEBULA_DEG = 200;
+const TARGETS = { nebula: polar(NEBULA_DEG, 120, 2), asteroids: polar(290, 80, 1), comet: polar(100, 85, 2) };
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.autoClear = false;
+
+// ---------- Background: procedural nebula + stars, scrolls with camera rotation ----------
+const bgScene = new THREE.Scene();
+const bgCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const bgMat = new THREE.ShaderMaterial({
+  uniforms: { uAz: { value: 0 }, uAspect: { value: 1 }, uTime: { value: 0 }, uNeb: { value: NEBULA_DEG * Math.PI / 180 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `
+    precision highp float;
+    varying vec2 vUv;
+    uniform float uAz, uAspect, uTime, uNeb;
+    const float PI = 3.14159265;
+    float hash13(vec3 p){ p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+    float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+    float noise(vec3 x){
+      vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(mix(hash13(i), hash13(i + vec3(1,0,0)), f.x), mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x), mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y), f.z);
+    }
+    float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++){ v += a * noise(p); p = p * 2.03 + 1.7; a *= 0.5; } return v; }
+    float starLayer(float theta, float y, float cols, float density, float size){
+      vec2 c = vec2(theta / (2.0 * PI) * cols, y * cols / (2.0 * PI));
+      vec2 id = floor(c); id.x = mod(id.x, cols);
+      float h = hash12(id);
+      if (h < 1.0 - density) return 0.0;
+      vec2 pos = vec2(hash12(id + 7.1), hash12(id + 3.7)) * 0.6 + 0.2;
+      float d = length(fract(c) - pos);
+      float tw = 0.75 + 0.25 * sin(uTime * (1.0 + h * 3.0) + h * 40.0);
+      return smoothstep(size, 0.0, d) * tw * (0.5 + 0.5 * hash12(id + 1.3));
+    }
+    void main(){
+      float W = 2.2;
+      float theta = uAz + PI + (vUv.x - 0.5) * W;
+      float y = (vUv.y - 0.5) * W / uAspect;
+      vec3 dir = vec3(cos(theta), y, sin(theta));
+
+      vec3 col = mix(vec3(0.012, 0.018, 0.045), vec3(0.03, 0.04, 0.085), vUv.y);
+      col += vec3(0.05, 0.06, 0.11) * smoothstep(0.45, 0.85, fbm(dir * 2.5 + 11.0)) * 0.8;
+
+      float dA = abs(mod(theta - uNeb + PI, 2.0 * PI) - PI);
+      float mask = exp(-dA * dA * 1.3) * exp(-pow(y - 0.08, 2.0) * 3.0);
+      float n = fbm(dir * 1.7 + vec3(0.0, 0.0, uTime * 0.004));
+      float detail = fbm(dir * 5.0 + 3.0);
+      float cloud = smoothstep(0.38, 0.85, n);
+      vec3 neb = mix(vec3(0.45, 0.12, 0.38), vec3(0.98, 0.45, 0.68), detail) * cloud;
+      neb += vec3(0.28, 0.16, 0.55) * smoothstep(0.25, 0.75, n) * 0.6;
+      neb += vec3(0.10, 0.45, 0.55) * smoothstep(0.62, 0.92, detail) * cloud * 0.6;
+      col += neb * mask * 1.1;
+
+      float s = starLayer(theta, y, 900.0, 0.06, 0.16) + 1.6 * starLayer(theta + 1.3, y + 0.4, 320.0, 0.05, 0.11);
+      col += vec3(0.85, 0.9, 1.0) * s * (1.0 - 0.65 * cloud * mask);
+
+      vec2 v = vUv - 0.5; col *= 1.0 - 0.55 * dot(v, v);
+      gl_FragColor = vec4(col, 1.0);
+    }`,
+  depthWrite: false, depthTest: false,
+});
+bgScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat));
+
+// ---------- World ----------
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 2000);
+let azimuth = Math.PI / 4, targetAz = azimuth, zoom = 1, targetZoom = 1;
+const ELEV = Math.atan(1 / Math.SQRT2);
+
+scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x141a33, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(40, 60, 30);
+scene.add(sun);
+const nebLight = new THREE.DirectionalLight(0xff7fb8, 0.6);
+nebLight.position.copy(TARGETS.nebula).setY(20);
+scene.add(nebLight);
+
+const glows = [];
+const mat = (color, opts = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.75, metalness: 0.1, ...opts });
+function glowMat(color) {
+  const m = mat(color, { emissive: new THREE.Color(color), emissiveIntensity: 0.9 });
+  glows.push(m);
+  return m;
+}
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x0A0F1E });
+function addMesh(parent, geo, material, x, y, z, edges = true) {
+  const m = new THREE.Mesh(geo, material);
+  m.position.set(x, y, z);
+  parent.add(m);
+  if (edges) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), edgeMat));
+  return m;
+}
+const prism = (p, r, h, y0, color, n = 8, x = 0, z = 0, m) =>
+  addMesh(p, new THREE.CylinderGeometry(r, r, h, n, 1, false, Math.PI / n), m || mat(color), x, y0 + h / 2, z);
+const box = (p, w, h, d, y0, color, x = 0, z = 0, m) =>
+  addMesh(p, new THREE.BoxGeometry(w, h, d), m || mat(color), x, y0 + h / 2, z);
+const dome = (p, r, y0, color, x = 0, z = 0, m) =>
+  addMesh(p, new THREE.SphereGeometry(r, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2), m || mat(color), x, y0, z);
+
+function base(p, accent) {
+  prism(p, 2.2, 0.42, 0, C.hull);
+  prism(p, 2.21, 0.14, 0.42, accent);
+  prism(p, 2.2, 0.16, 0.56, C.hull);
+  for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1]]) box(p, dx ? 0.6 : 0.7, 0.4, dz ? 0.6 : 0.7, 0.15, C.hullDark, dx * 2.45, dz * 2.45);
+  return 0.72;
+}
+
+const BUILD = {
+  command(p) {
+    const y = base(p, C.gold);
+    prism(p, 1.35, 0.7, y, C.hull);
+    prism(p, 1.37, 0.45, y + 0.7, C.navy, 8, 0, 0, glowMat(C.glass));
+    prism(p, 1.2, 0.3, y + 1.15, C.hull);
+    prism(p, 0.8, 0.12, y + 1.45, C.gold);
+    box(p, 0.14, 1.1, 0.14, y + 1.57, C.hullDark, -0.3, -0.3);
+    prism(p, 0.62, 0.1, y + 2.6, 0xE9EDF2, 16, -0.3, -0.3).rotation.z = 0.35;
+  },
+  habitat(p) {
+    const y = base(p, C.green);
+    prism(p, 1.8, 1.0, y, C.hull, 16);
+    prism(p, 1.81, 0.3, y + 0.35, C.yellow, 16, 0, 0, glowMat(C.yellow));
+    prism(p, 1.65, 0.1, y + 1.0, C.hullDark, 16);
+    dome(p, 1.45, y + 1.1, C.garden, 0, 0, mat(C.garden, { transparent: true, opacity: 0.9 }));
+  },
+  storage(p) {
+    const y = base(p, C.storage);
+    [[-0.75, -0.75, C.h2], [0.85, -0.55, C.ice], [-0.55, 0.85, C.iron]].forEach(([x, z, c]) => {
+      prism(p, 0.68, 1.5, y, c, 16, x, z);
+      prism(p, 0.55, 0.14, y + 1.5, C.hull, 16, x, z);
+      prism(p, 0.69, 0.12, y + 0.25, C.hullDark, 16, x, z);
+    });
+  },
+  refinery(p) {
+    const y = base(p, C.orange);
+    for (const [x, z] of [[-0.7, -0.9], [0.4, -1.0]]) {
+      prism(p, 0.38, 2.0, y, C.hullDark, 12, x, z);
+      prism(p, 0.42, 0.12, y + 2.0, C.orange, 12, x, z, glowMat(C.orange));
+    }
+    box(p, 2.4, 1.0, 2.0, y, C.hull, 0.1, 0.25);
+    box(p, 2.2, 0.12, 1.8, y + 1.0, C.hullDark, 0.1, 0.25);
+  },
+  fusion(p) {
+    const y = base(p, C.cyan);
+    prism(p, 0.9, 1.8, y, C.navy, 16);
+    addMesh(p, new THREE.TorusGeometry(1.5, 0.28, 8, 24), glowMat(C.cyan), 0, y + 0.75, 0).rotation.x = Math.PI / 2;
+    prism(p, 0.6, 0.14, y + 1.8, C.cyan, 16, 0, 0, glowMat(C.cyan));
+  },
+  factory(p) {
+    const y = base(p, C.blue);
+    box(p, 2.8, 0.8, 2.2, y, C.hull);
+    for (let k = 0; k < 3; k++) {
+      const x = -1.3 + 0.9 * k;
+      box(p, 0.75, 0.55, 2.0, y + 0.8, C.hull, x + 0.375);
+      box(p, 0.12, 0.55, 2.0, y + 0.8, C.blue, x + 0.66);
+    }
+  },
+  assembly(p) {
+    const y = base(p, C.purple);
+    prism(p, 1.8, 0.08, y, 0x3C3358, 16);
+    for (const [x, z] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]]) box(p, 0.22, 2.0, 0.22, y, C.hullDark, x, z);
+    box(p, 2.6, 0.22, 0.22, y + 2.0, C.purple, 0, -1.2);
+    box(p, 2.6, 0.22, 0.22, y + 2.0, C.purple, 0, 1.2);
+    box(p, 1.2, 0.45, 0.8, y + 0.08, C.hull, 0.2, 0.1);
+  },
+  dock(p) {
+    const y = base(p, C.yellow);
+    prism(p, 1.95, 0.06, y, C.navy, 16);
+    addMesh(p, new THREE.RingGeometry(1.2, 1.35, 32), mat(C.yellow, { side: THREE.DoubleSide }), 0, y + 0.07, 0, false).rotation.x = -Math.PI / 2;
+  },
+  turret(p) {
+    prism(p, 1.3, 0.5, 0, C.hull);
+    prism(p, 1.31, 0.12, 0.5, C.red);
+    prism(p, 1.3, 0.1, 0.62, C.hull);
+    dome(p, 0.75, 0.72, C.hullDark);
+    box(p, 1.4, 0.14, 0.14, 1.1, C.red, 1.0, -0.23);
+    box(p, 1.4, 0.14, 0.14, 1.1, C.red, 1.0, 0.23);
+  },
+  trade(p) {
+    const y = base(p, C.mint);
+    const crates = [C.h2, C.ice, C.iron, C.storage, C.h2, C.iron];
+    crates.forEach((c, i) => box(p, 0.9, 0.6, 0.7, y + Math.floor(i / 3) * 0.6, c, -0.9 + (i % 3) * 0.95, 0.8));
+    box(p, 0.3, 2.4, 0.3, y, C.hullDark, 1.2, -0.6);
+    box(p, 0.25, 0.25, 3.6, y + 2.4, C.mint, 1.2, -1.9);
+    box(p, 0.06, 0.8, 0.06, y + 1.6, C.hullDark, 1.2, -3.4);
+  },
+};
+
+function makeShip(color) {
+  const s = new THREE.Group();
+  box(s, 1.3, 0.32, 0.55, 0, C.hull);
+  box(s, 0.35, 0.22, 0.4, 0.04, C.glass, 0.55);
+  box(s, 0.7, 0.1, 0.35, 0.08, color, -0.2, -0.45);
+  box(s, 0.7, 0.1, 0.35, 0.08, color, -0.2, 0.45);
+  box(s, 0.15, 0.22, 0.4, 0.05, C.cyan, -0.9, 0, glowMat(C.cyan));
+  return s;
+}
+
+function makeFreighter() {
+  const f = new THREE.Group();
+  box(f, 11, 1.4, 2.6, 0, C.hull);
+  box(f, 2.2, 1.8, 3.4, -0.2, C.hullDark, -5.2);
+  box(f, 0.3, 1.2, 2.6, 0.1, C.cyan, -6.45, 0, glowMat(C.cyan));
+  box(f, 2.0, 1.5, 2.2, 1.4, C.hull, -3.6);
+  box(f, 0.1, 0.4, 1.8, 2.3, C.glass, -2.55, 0, glowMat(C.glass));
+  box(f, 1.6, 0.9, 2.0, 0.25, C.mint, 6.2);
+  box(f, 7.0, 0.12, 0.3, 1.4, C.mint, 1.2, -1.2);
+  box(f, 7.0, 0.12, 0.3, 1.4, C.mint, 1.2, 1.2);
+  const colors = [C.h2, C.ice, C.iron, C.storage];
+  const containers = [];
+  for (let i = 0; i < 8; i++) {
+    const c = box(f, 1.4, 1.0, 1.0, 1.4, colors[i % 4], -1.4 + (i % 4) * 1.6, i < 4 ? -0.6 : 0.6);
+    c.visible = false;
+    containers.push(c);
+  }
+  return { group: f, containers };
+}
+
+const reach = kind => kind === 'turret' ? 1.25 : 2.75;
+const cars = [];
+function buildFrame(a, b) {
+  const ka = LAYOUT.find(m => m[0] === a[0] && m[1] === a[1])[2];
+  const kb = LAYOUT.find(m => m[0] === b[0] && m[1] === b[1])[2];
+  const alongX = a[1] === b[1];
+  const s0 = (alongX ? a[0] : a[1]) * G + reach(ka), s1 = (alongX ? b[0] : b[1]) * G - reach(kb);
+  const fixed = (alongX ? a[1] : a[0]) * G, len = s1 - s0, mid = (s0 + s1) / 2;
+  const place = (along, across) => alongX ? [along, across] : [across, along];
+  for (const off of [-0.35, 0.35]) for (const yy of [0.12, 0.62]) {
+    const [x, z] = place(mid, fixed + off);
+    box(scene, alongX ? len : 0.1, 0.1, alongX ? 0.1 : len, yy, off < 0 ? C.hullDark : C.hull, x, z);
+  }
+  const [rx, rz] = place(mid, fixed);
+  box(scene, alongX ? len : 0.1, 0.05, alongX ? 0.1 : len, 0.12, C.yellow, rx, rz);
+  const n = Math.max(1, Math.round(len));
+  for (let k = 0; k <= n; k++) for (const off of [-0.35, 0.35]) {
+    const [x, z] = place(s0 + len * k / n, fixed + off);
+    box(scene, 0.1, 0.6, 0.1, 0.12, C.hullDark, x, z);
+  }
+  const car = new THREE.Group();
+  box(car, alongX ? 0.7 : 0.45, 0.38, alongX ? 0.45 : 0.7, 0, 0xE9EDF2);
+  car.position.set(rx, 0.17, rz);
+  scene.add(car);
+  cars.push({ car, s0: s0 + 0.4, s1: s1 - 0.4, alongX, phase: Math.random() * 6 });
+}
+
+for (const [gx, gy, kind] of LAYOUT) {
+  const g = new THREE.Group();
+  g.position.set(gx * G, 0, gy * G);
+  BUILD[kind](g);
+  scene.add(g);
+}
+for (const [a, b] of LINKS) buildFrame(a, b);
+
+// ---------- Mining sites ----------
+const rocks = [];
+for (let i = 0; i < 46; i++) {
+  const r = 0.5 + Math.random() ** 2 * 3.2;
+  const a = Math.random() * Math.PI * 2, d = Math.random() * 16;
+  const rock = addMesh(scene, new THREE.DodecahedronGeometry(r, 0), mat(i % 5 ? 0x8C7A6B : 0x9A8F86), 0, 0, 0);
+  rock.position.set(TARGETS.asteroids.x + Math.cos(a) * d * 1.4, -2 + Math.random() * 5, TARGETS.asteroids.z + Math.sin(a) * d);
+  rock.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+  rocks.push({ rock, spin: (Math.random() - 0.5) * 0.3 });
+}
+const comet = addMesh(scene, new THREE.IcosahedronGeometry(2.4, 0), mat(0xEAF6FF, { emissive: 0x9fd8f5, emissiveIntensity: 0.25 }), TARGETS.comet.x, 2, TARGETS.comet.z);
+const tailDir = TARGETS.comet.clone().setY(0).normalize();
+const tail = new THREE.Mesh(new THREE.ConeGeometry(4.5, 40, 16, 1, true),
+  new THREE.ShaderMaterial({
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `varying vec2 vUv; void main(){ gl_FragColor = vec4(vec3(0.66, 0.87, 0.96) * pow(vUv.y, 2.2) * 0.45, 1.0); }`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  }));
+tail.position.copy(TARGETS.comet).addScaledVector(tailDir, 20).setY(2);
+tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), tailDir);
+scene.add(tail);
+rocks.push({ rock: comet, spin: 0.15 });
+
+// ---------- Mining ships with engine trails ----------
+const DOCK = new THREE.Vector3(0, 1.0, G);
+const ships = [];
+const TRAIL = 40;
+[['nebula', C.yellow, 48], ['asteroids', C.cyan, 40], ['comet', C.yellow, 44], ['asteroids', C.yellow, 52], ['nebula', C.cyan, 56]]
+  .forEach(([target, color, dur], i) => {
+    const ship = makeShip(color);
+    scene.add(ship);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(TRAIL * 3), 3));
+    const cols = new Float32Array(TRAIL * 3);
+    for (let k = 0; k < TRAIL; k++) { const f = 1 - k / TRAIL; cols.set([0.31 * f, 0.82 * f, 0.91 * f], k * 3); }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    const trail = new THREE.Line(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    scene.add(trail);
+    ships.push({ ship, trail, target: TARGETS[target], kind: target, dur, phase: i * 0.21 });
+  });
+
+const smooth = k => k * k * (3 - 2 * k);
+function shipState(s, u) {
+  u = ((u % 1) + 1) % 1;
+  const out = (from, to, k) => {
+    const e = smooth(k);
+    const p = from.clone().lerp(to, e);
+    p.y += Math.sin(e * Math.PI) * 6;
+    return p;
+  };
+  if (u < 0.04 || u >= 0.96) return { pos: DOCK.clone(), visible: true, scale: 1, moving: false };
+  if (u < 0.42) {
+    const k = (u - 0.04) / 0.38;
+    const fade = s.kind === 'nebula' ? Math.min(1, (1 - k) / 0.2) : 1;
+    return { pos: out(DOCK, s.target, k), visible: true, scale: Math.max(0.25, fade), moving: true };
+  }
+  if (u < 0.58) {
+    const a = (u - 0.42) * 40;
+    const p = s.target.clone().add(new THREE.Vector3(Math.cos(a) * 3, 1.5, Math.sin(a) * 3));
+    return { pos: p, visible: s.kind !== 'nebula', scale: 1, moving: false };
+  }
+  const k = (u - 0.58) / 0.38;
+  const fade = s.kind === 'nebula' ? Math.min(1, k / 0.2) : 1;
+  return { pos: out(s.target, DOCK, k), visible: true, scale: Math.max(0.25, fade), moving: true };
+}
+
+// ---------- Freighter ----------
+const freighter = makeFreighter();
+scene.add(freighter.group);
+const F_PARK = new THREE.Vector3(0, 2.2, -2 * G - 9);
+const F_FROM = polar(330, 170, 6), F_TO = polar(180, 170, 6);
+const F_CYCLE = 40;
+const statusEl = document.getElementById('freighterStatus');
+
+function updateFreighter(t) {
+  const c = t % F_CYCLE;
+  let pos, look, loaded = 0, status;
+  if (c < 9) {
+    const e = 1 - (1 - c / 9) ** 3;
+    pos = F_FROM.clone().lerp(F_PARK, e); look = F_PARK.clone().sub(F_FROM);
+    status = 'Freighter arriving';
+  } else if (c < 22) {
+    pos = F_PARK.clone(); look = new THREE.Vector3(-1, 0, 0);
+    loaded = Math.max(0, Math.min(8, Math.floor((c - 10) / 1.4)));
+    status = `Freighter docked · loading ${loaded}/8 · +${(loaded * 640).toLocaleString()} credits`;
+  } else if (c < 31) {
+    const k = (c - 22) / 9; const e = k * k * k;
+    pos = F_PARK.clone().lerp(F_TO, e); look = F_TO.clone().sub(F_PARK); loaded = 8;
+    status = 'Freighter departing';
+  } else {
+    freighter.group.visible = false;
+    statusEl.innerHTML = `Next freighter in ${Math.ceil((F_CYCLE - c) * 3)} h`;
+    return;
+  }
+  freighter.group.visible = true;
+  freighter.group.position.copy(pos);
+  freighter.group.lookAt(pos.clone().add(look));
+  freighter.group.rotateY(-Math.PI / 2);
+  freighter.containers.forEach((m, i) => { m.visible = i < loaded; });
+  statusEl.innerHTML = `<span class="mint">${status}</span>`;
+}
+
+// ---------- Camera + input ----------
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  const half = 20, aspect = w / h;
+  camera.left = -half * aspect; camera.right = half * aspect; camera.top = half; camera.bottom = -half;
+  camera.updateProjectionMatrix();
+  bgMat.uniforms.uAspect.value = aspect;
+}
+addEventListener('resize', resize);
+
+let dragging = false, lastX = 0;
+canvas.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if (dragging) { targetAz -= (e.clientX - lastX) * 0.008; azimuth = targetAz; lastX = e.clientX; } });
+canvas.addEventListener('pointerup', () => { dragging = false; });
+canvas.addEventListener('wheel', e => { e.preventDefault(); targetZoom = Math.min(3, Math.max(0.18, targetZoom * (e.deltaY > 0 ? 0.9 : 1.1))); }, { passive: false });
+document.getElementById('rotL').onclick = () => { targetAz += Math.PI / 4; };
+document.getElementById('rotR').onclick = () => { targetAz -= Math.PI / 4; };
+document.getElementById('zoomOut').onclick = () => { targetZoom = 0.22; };
+document.getElementById('zoomIn').onclick = () => { targetZoom = 1; };
+
+const clock = new THREE.Clock();
+function tick() {
+  const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
+  azimuth += (targetAz - azimuth) * Math.min(1, dt * 8);
+  zoom += (targetZoom - zoom) * Math.min(1, dt * 5);
+  const d = 400;
+  camera.position.set(Math.cos(azimuth) * Math.cos(ELEV) * d, Math.sin(ELEV) * d, Math.sin(azimuth) * Math.cos(ELEV) * d);
+  camera.lookAt(0, 0, 0);
+  camera.zoom = zoom; camera.updateProjectionMatrix();
+  bgMat.uniforms.uAz.value = azimuth;
+  bgMat.uniforms.uTime.value = t;
+
+  for (const c of cars) {
+    const s = c.s0 + (c.s1 - c.s0) * (Math.sin(t * 0.5 + c.phase) + 1) / 2;
+    if (c.alongX) c.car.position.x = s; else c.car.position.z = s;
+  }
+  for (const s of ships) {
+    const u = t / s.dur + s.phase;
+    const st = shipState(s, u);
+    s.ship.visible = st.visible;
+    s.ship.scale.setScalar(st.scale);
+    s.ship.position.copy(st.pos);
+    const ahead = shipState(s, u + 0.002).pos;
+    if (ahead.distanceToSquared(st.pos) > 1e-6) { s.ship.lookAt(ahead); s.ship.rotateY(-Math.PI / 2); }
+    const arr = s.trail.geometry.attributes.position.array;
+    for (let k = 0; k < TRAIL; k++) {
+      const p = shipState(s, u - k * 0.0012);
+      const hidden = !p.moving && k > 0;
+      arr.set(hidden ? [st.pos.x, st.pos.y, st.pos.z] : [p.pos.x, p.pos.y, p.pos.z], k * 3);
+    }
+    s.trail.geometry.attributes.position.needsUpdate = true;
+    s.trail.visible = st.moving;
+  }
+  for (const r of rocks) r.rock.rotation.y += r.spin * dt;
+  for (const m of glows) m.emissiveIntensity = 0.75 + 0.25 * Math.sin(t * 2);
+  updateFreighter(t);
+
+  renderer.clear();
+  renderer.render(bgScene, bgCam);
+  renderer.clearDepth();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+resize();
+tick();
+</script>
+</body>
+</html>
