@@ -3,6 +3,8 @@ extends Node3D
 ## A field of low-poly, flat-shaded asteroids.
 ## Move this node to move the field. Change any setting in the Inspector and the
 ## field rebuilds in the editor right away.
+## The whole formation turns slowly, each rock wanders a little around its spot,
+## and each rock tumbles. This plays in the editor too.
 
 @export var field_seed := 7:
 	set(value):
@@ -32,7 +34,10 @@ extends Node3D
 	set(value):
 		lumpiness = value
 		_rebuild()
-@export var spin_speed := 0.2
+@export var spin_speed := 0.06
+@export var formation_turn_speed_deg := 0.4
+@export var wander_distance := 0.4
+@export var wander_period := 60.0
 @export var rock_colors: Array[Color] = [
 	Color("5b5e68"),
 	Color("464851"),
@@ -44,9 +49,14 @@ extends Node3D
 
 const SHAPE_VARIANTS := 12
 
+var _formation: Node3D
 var _rocks: Array[MeshInstance3D] = []
+var _homes: Array[Vector3] = []
+var _wander_phases: Array[Vector3] = []
+var _wander_rates: Array[float] = []
 var _spin_axes: Array[Vector3] = []
 var _spin_rates: Array[float] = []
+var _time := 0.0
 
 
 func _ready() -> void:
@@ -54,23 +64,39 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if Engine.is_editor_hint():
+	if _formation == null:
 		return
+	_time += delta
+	_formation.rotate_y(deg_to_rad(formation_turn_speed_deg) * delta)
+	var base_rate := TAU / wander_period
 	for i in _rocks.size():
+		var t := _time * base_rate * _wander_rates[i]
+		var phase := _wander_phases[i]
+		var offset := Vector3(sin(t + phase.x), 0.5 * sin(t * 0.7 + phase.y), sin(t * 0.85 + phase.z))
+		_rocks[i].position = _homes[i] + offset * wander_distance
 		_rocks[i].rotate(_spin_axes[i], _spin_rates[i] * spin_speed * delta)
 
 
 func _rebuild() -> void:
 	if not is_inside_tree():
 		return
+	if _formation == null:
+		_formation = Node3D.new()
+		add_child(_formation)
 	for rock in _rocks:
 		rock.queue_free()
 	_rocks.clear()
+	_homes.clear()
+	_wander_phases.clear()
+	_wander_rates.clear()
 	_spin_axes.clear()
 	_spin_rates.clear()
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = field_seed
+	# Separate generator for motion so the layout stays the same for a given seed.
+	var motion_rng := RandomNumberGenerator.new()
+	motion_rng.seed = field_seed + 1
 
 	var meshes: Array[ArrayMesh] = []
 	for i in SHAPE_VARIANTS:
@@ -92,8 +118,11 @@ func _rebuild() -> void:
 		rock.position = _open_position(rng, size)
 		rock.rotation = Vector3(rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU)
 		rock.scale = Vector3.ONE * size
-		add_child(rock)
+		_formation.add_child(rock)
 		_rocks.append(rock)
+		_homes.append(rock.position)
+		_wander_phases.append(Vector3(motion_rng.randf() * TAU, motion_rng.randf() * TAU, motion_rng.randf() * TAU))
+		_wander_rates.append(motion_rng.randf_range(0.7, 1.3))
 		_spin_axes.append(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized())
 		_spin_rates.append(rng.randf_range(0.2, 1.0))
 
@@ -103,8 +132,8 @@ func _open_position(rng: RandomNumberGenerator, size: float) -> Vector3:
 	var spot := _random_position(rng)
 	for attempt in 12:
 		var clear := true
-		for rock in _rocks:
-			if rock.position.distance_to(spot) < (rock.scale.x + size) * 1.3:
+		for i in _rocks.size():
+			if _homes[i].distance_to(spot) < (_rocks[i].scale.x + size) * 1.3:
 				clear = false
 				break
 		if clear:
