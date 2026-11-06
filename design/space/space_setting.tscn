@@ -1,8 +1,10 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="1_rig"]
 [ext_resource type="Shader" path="res://design/space/nebula_backdrop.gdshader" id="2_neb"]
 [ext_resource type="Script" path="res://design/space/asteroid_field.gd" id="3_field"]
+[ext_resource type="Script" path="res://design/modules/module_base.gd" id="4_base"]
+[ext_resource type="Script" path="res://design/modules/frame_piece.gd" id="5_frame"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -22,17 +24,6 @@ shader = ExtResource("2_neb")
 material = SubResource("ShaderMaterial_nebula")
 size = Vector2(2, 2)
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_platform"]
-top_radius = 2.5
-bottom_radius = 2.5
-height = 0.6
-radial_segments = 8
-rings = 1
-
-[sub_resource type="StandardMaterial3D" id="Material_platform"]
-albedo_color = Color(0.56, 0.6, 0.67, 1)
-roughness = 0.9
-
 [node name="SpaceSetting" type="Node3D"]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
@@ -44,26 +35,35 @@ light_color = Color(1, 0.95, 0.88, 1)
 light_energy = 1.3
 
 [node name="CameraRig" type="Node3D" parent="."]
-position = Vector3(13.7, 0, -37.6)
+position = Vector3(15, 0, 0)
 script = ExtResource("1_rig")
-zoom = 85.0
+zoom = 90.0
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
 projection = 1
 current = true
-size = 85.0
-near = 0.5
-far = 1000.0
+size = 90.0
+near = 1.0
+far = 10000.0
 
 [node name="NebulaBackdrop" type="MeshInstance3D" parent="CameraRig/Camera3D"]
 cast_shadow = 0
 extra_cull_margin = 16384.0
 mesh = SubResource("QuadMesh_backdrop")
 
-[node name="PlatformMarker" type="MeshInstance3D" parent="."]
-mesh = SubResource("CylinderMesh_platform")
-surface_material_override/0 = SubResource("Material_platform")
+[node name="Platform" type="Node3D" parent="."]
+
+[node name="ModuleBase" type="Node3D" parent="Platform"]
+script = ExtResource("4_base")
+
+[node name="FramePiece1" type="Node3D" parent="Platform"]
+position = Vector3(15, 0, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece2" type="Node3D" parent="Platform"]
+position = Vector3(30, 0, 0)
+script = ExtResource("5_frame")
 
 [node name="AsteroidField" type="Node3D" parent="."]
-position = Vector3(27.4, 0, -75.2)
+position = Vector3(308.2, 0, -846)
 script = ExtResource("3_field")

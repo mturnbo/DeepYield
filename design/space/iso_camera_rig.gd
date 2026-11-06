@@ -1,6 +1,6 @@
 @tool
 extends Node3D
-## Isometric orthographic camera that orbits a focus point.
+## Isometric orthographic camera that orbits a focus point. Distances are in meters.
 ## Drag with the left mouse button to rotate, scroll to zoom, WASD or the arrow
 ## keys to pan, and R to reset the view.
 
@@ -12,15 +12,15 @@ extends Node3D
 	set(value):
 		pitch_deg = value
 		_place_camera()
-@export var zoom := 70.0:
+@export var zoom := 400.0:
 	set(value):
 		zoom = clampf(value, min_zoom, max_zoom)
 		_place_camera()
-@export var min_zoom := 10.0
-@export var max_zoom := 240.0
-@export var distance := 300.0
+@export var min_zoom := 40.0
+@export var max_zoom := 3000.0
+@export var distance := 4000.0
 @export var rotate_speed := 0.3
-@export var pan_speed := 40.0
+@export var pan_speed := 230.0
 
 var _start_position := Vector3.ZERO
 var _start_yaw := 0.0
@@ -63,7 +63,7 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		move.x += 1.0
 	if move != Vector3.ZERO:
-		position += basis * move.normalized() * pan_speed * delta * (zoom / 70.0)
+		position += basis * move.normalized() * pan_speed * delta * (zoom / 400.0)
 
 
 func _place_camera() -> void:

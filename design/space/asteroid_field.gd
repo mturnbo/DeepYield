@@ -1,6 +1,6 @@
 @tool
 extends Node3D
-## A field of low-poly, flat-shaded asteroids.
+## A field of low-poly, flat-shaded asteroids. Distances are in meters.
 ## Move this node to move the field. Change any setting in the Inspector and the
 ## field rebuilds in the editor right away.
 ## The whole formation turns slowly, each rock wanders a little around its spot,
@@ -14,19 +14,19 @@ extends Node3D
 	set(value):
 		asteroid_count = value
 		_rebuild()
-@export var field_radius := 22.0:
+@export var field_radius := 130.0:
 	set(value):
 		field_radius = value
 		_rebuild()
-@export var field_thickness := 3.0:
+@export var field_thickness := 18.0:
 	set(value):
 		field_thickness = value
 		_rebuild()
-@export var min_size := 0.2:
+@export var min_size := 1.2:
 	set(value):
 		min_size = value
 		_rebuild()
-@export var max_size := 2.4:
+@export var max_size := 14.0:
 	set(value):
 		max_size = value
 		_rebuild()
@@ -36,7 +36,7 @@ extends Node3D
 		_rebuild()
 @export var spin_speed := 0.06
 @export var formation_turn_speed_deg := 0.4
-@export var wander_distance := 0.4
+@export var wander_distance := 2.4
 @export var wander_period := 60.0
 @export var rock_colors: Array[Color] = [
 	Color("5b5e68"),
