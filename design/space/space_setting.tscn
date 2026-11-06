@@ -1,0 +1,69 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="1_rig"]
+[ext_resource type="Shader" path="res://design/space/nebula_backdrop.gdshader" id="2_neb"]
+[ext_resource type="Script" path="res://design/space/asteroid_field.gd" id="3_field"]
+
+[sub_resource type="Environment" id="Environment_space"]
+background_mode = 1
+background_color = Color(0.008, 0.011, 0.026, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.32, 0.36, 0.55, 1)
+ambient_light_energy = 0.8
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nebula"]
+render_priority = -128
+shader = ExtResource("2_neb")
+
+[sub_resource type="QuadMesh" id="QuadMesh_backdrop"]
+material = SubResource("ShaderMaterial_nebula")
+size = Vector2(2, 2)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_platform"]
+top_radius = 2.5
+bottom_radius = 2.5
+height = 0.6
+radial_segments = 8
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_platform"]
+albedo_color = Color(0.56, 0.6, 0.67, 1)
+roughness = 0.9
+
+[node name="SpaceSetting" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_space")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.85, 2.6, 0)
+light_color = Color(1, 0.95, 0.88, 1)
+light_energy = 1.3
+
+[node name="CameraRig" type="Node3D" parent="."]
+position = Vector3(13.7, 0, -37.6)
+script = ExtResource("1_rig")
+zoom = 85.0
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+projection = 1
+current = true
+size = 85.0
+near = 0.5
+far = 1000.0
+
+[node name="NebulaBackdrop" type="MeshInstance3D" parent="CameraRig/Camera3D"]
+cast_shadow = 0
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_backdrop")
+
+[node name="PlatformMarker" type="MeshInstance3D" parent="."]
+mesh = SubResource("CylinderMesh_platform")
+surface_material_override/0 = SubResource("Material_platform")
+
+[node name="AsteroidField" type="Node3D" parent="."]
+position = Vector3(27.4, 0, -75.2)
+script = ExtResource("3_field")
