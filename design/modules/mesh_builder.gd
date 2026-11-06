@@ -37,6 +37,17 @@ static func add_box(st: SurfaceTool, size: Vector3, xform: Transform3D) -> void:
 		add_quad(st, corners[face[0]], corners[face[1]], corners[face[2]], corners[face[3]], xform.basis * face[4])
 
 
+# A thin square box from one point to another.
+static func add_strut(st: SurfaceTool, from: Vector3, to: Vector3, thickness: float) -> void:
+	var along := to - from
+	var x_axis := along.normalized()
+	var helper := Vector3.UP if absf(x_axis.dot(Vector3.UP)) < 0.9 else Vector3.BACK
+	var z_axis := x_axis.cross(helper).normalized()
+	var y_axis := z_axis.cross(x_axis)
+	var strut_basis := Basis(x_axis, y_axis, z_axis)
+	add_box(st, Vector3(along.length(), thickness, thickness), Transform3D(strut_basis, (from + to) / 2.0))
+
+
 # A prism around the vertical axis, or a frustum when the two radii differ.
 # Radii are to the corners. With 8 sides and a 22.5 degree offset, flat sides face the X and Z axes.
 static func add_prism(st: SurfaceTool, sides: int, bottom_radius: float, top_radius: float, bottom_y: float, top_y: float, angle_offset: float) -> void:

@@ -79,8 +79,8 @@ func _rebuild() -> void:
 		var x1 := x0 + bay
 		var flip := 1.0 if i % 2 == 0 else -1.0
 		for z in [-hz, hz]:
-			_strut(truss, Vector3(x0, -hy * flip, z), Vector3(x1, hy * flip, z))
-		_strut(truss, Vector3(x0, hy, -hz * flip), Vector3(x1, hy, hz * flip))
+			MeshBuilder.add_strut(truss, Vector3(x0, -hy * flip, z), Vector3(x1, hy * flip, z), brace_thickness)
+		MeshBuilder.add_strut(truss, Vector3(x0, hy, -hz * flip), Vector3(x1, hy, hz * flip), brace_thickness)
 
 	# The rail runs along the floor of the truss.
 	_box(rail, Vector3(length, 0.3, 1.4), Vector3(length / 2.0, -hy + chord_thickness / 2.0 + 0.15, 0))
@@ -95,14 +95,3 @@ func _rebuild() -> void:
 
 func _box(st: SurfaceTool, size: Vector3, center: Vector3) -> void:
 	MeshBuilder.add_box(st, size, Transform3D(Basis(), center))
-
-
-# A thin box from one point to another.
-func _strut(st: SurfaceTool, from: Vector3, to: Vector3) -> void:
-	var along := to - from
-	var x_axis := along.normalized()
-	var helper := Vector3.UP if absf(x_axis.dot(Vector3.UP)) < 0.9 else Vector3.BACK
-	var z_axis := x_axis.cross(helper).normalized()
-	var y_axis := z_axis.cross(x_axis)
-	var strut_basis := Basis(x_axis, y_axis, z_axis)
-	MeshBuilder.add_box(st, Vector3(along.length(), brace_thickness, brace_thickness), Transform3D(strut_basis, (from + to) / 2.0))
