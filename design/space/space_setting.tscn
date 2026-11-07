@@ -18,7 +18,7 @@
 [ext_resource type="Script" path="res://design/modules/refinery.gd" id="16_refinery"]
 [ext_resource type="Script" path="res://design/ships/robot_ship.gd" id="17_ship"]
 [ext_resource type="Script" path="res://design/modules/reinforcing_junction.gd" id="18_junction"]
-[ext_resource type="Script" path="res://design/modules/defense_junction.gd" id="19_defense"]
+[ext_resource type="Script" path="res://design/modules/defense_station.gd" id="19_defense"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -238,7 +238,7 @@ position = Vector3(-110, 0, 20)
 rotation = Vector3(0, -1.5708, 0)
 script = ExtResource("5_frame")
 
-[node name="DefenseJunction" type="Node3D" parent="Platform"]
+[node name="DefenseStation" type="Node3D" parent="Platform"]
 position = Vector3(-110, 0, 40)
 script = ExtResource("19_defense")
 

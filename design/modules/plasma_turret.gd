@@ -1,17 +1,16 @@
 @tool
-extends "res://design/modules/reinforcing_junction.gd"
-## The defense junction: the same block as a reinforcing junction, with a red band
-## and a phased plasma turret on top and another hanging underneath. Each turret is a
-## low drum with a domed top that turns all the way around, and twin red barrels on a
-## mount that tilts from level up to 60 degrees, away from the platform. The muzzles
-## glow. While scanning, the turrets turn slowly, the bottom one the other way, and
-## their barrels rise and fall. Distances are in meters. Scanning plays in the
-## editor too.
+extends Node3D
+## A phased plasma turret: a dark ring, a drum with a low domed top that turns all the
+## way around, and twin red barrels on a mount that tilts from level up to 60 degrees,
+## away from the surface the turret stands on. The muzzles glow. While scanning, the
+## turret turns slowly and its barrels rise and fall. It stands up along its own +Y,
+## so it can be mounted on any surface by turning the node. Distances are in meters.
+## Scanning plays in the editor too.
 
-## How fast the turrets turn while scanning, in degrees per second. 0 stops scanning,
+## How fast the turret turns while scanning, in degrees per second. 0 stops scanning,
 ## and the barrels hold at tilt_deg.
 @export var scan_speed_deg := 8.0
-## How far the barrels tilt up from level when the turrets aren't scanning.
+## How far the barrels tilt up from level when the turret isn't scanning.
 @export_range(0.0, 60.0) var tilt_deg := 20.0:
 	set(value):
 		tilt_deg = value
@@ -37,61 +36,46 @@ const TILT_PERIOD := 16.0
 # Where the barrel mount pivots, on the drum's side.
 const GUN_PIVOT := Vector3(2.7, 1.2, 0)
 
-# Each turret hangs off a fixed mount, turns on a yaw node inside it, and tilts its
-# barrels on a pitch node inside that.
-var _mounts: Array[Node3D] = []
-var _yaws: Array[Node3D] = []
-var _pitches: Array[Node3D] = []
+# The turret turns on the yaw node and tilts its barrels on the pitch node inside it.
+var _yaw: Node3D
+var _pitch: Node3D
 var _time := 0.0
 
 
-func _init() -> void:
-	band_color = Color("e5534b")
+func _ready() -> void:
+	_rebuild()
 
 
 func _process(delta: float) -> void:
-	if scan_speed_deg == 0.0:
+	if _yaw == null or scan_speed_deg == 0.0:
 		return
 	_time += delta
-	for yaw in _yaws:
-		yaw.rotate_y(deg_to_rad(scan_speed_deg) * delta)
+	_yaw.rotate_y(deg_to_rad(scan_speed_deg) * delta)
 	_set_tilt(MAX_TILT_DEG * (0.5 - 0.5 * cos(_time * TAU / TILT_PERIOD)))
 
 
 func _rebuild() -> void:
-	super()
 	if not is_inside_tree():
 		return
-	if _mounts.is_empty():
-		for flip in [false, true]:
-			var mount := Node3D.new()
-			mount.position = Vector3(0, KEEL_BOTTOM if flip else DECK_TOP, 0)
-			if flip:
-				mount.rotation = Vector3(PI, 0, 0)
-			add_child(mount)
-			var yaw := Node3D.new()
-			mount.add_child(yaw)
-			yaw.add_child(MeshInstance3D.new())
-			var pitch := Node3D.new()
-			pitch.position = GUN_PIVOT
-			yaw.add_child(pitch)
-			pitch.add_child(MeshInstance3D.new())
-			_mounts.append(mount)
-			_yaws.append(yaw)
-			_pitches.append(pitch)
+	if _yaw == null:
+		_yaw = Node3D.new()
+		add_child(_yaw)
+		_yaw.add_child(MeshInstance3D.new())
+		_pitch = Node3D.new()
+		_pitch.position = GUN_PIVOT
+		_yaw.add_child(_pitch)
+		_pitch.add_child(MeshInstance3D.new())
 
-	var body := _make_body_mesh()
-	var gun := _make_gun_mesh()
-	for i in _yaws.size():
-		(_yaws[i].get_child(0) as MeshInstance3D).mesh = body
-		(_pitches[i].get_child(0) as MeshInstance3D).mesh = gun
+	(_yaw.get_child(0) as MeshInstance3D).mesh = _make_body_mesh()
+	(_pitch.get_child(0) as MeshInstance3D).mesh = _make_gun_mesh()
 	_set_tilt(tilt_deg)
 
 
 # Tilting turns the barrel mount about its pivot, raising the barrels' far end.
 func _set_tilt(degrees: float) -> void:
-	for pitch in _pitches:
-		pitch.rotation = Vector3(0, 0, deg_to_rad(clampf(degrees, 0.0, MAX_TILT_DEG)))
+	if _pitch == null:
+		return
+	_pitch.rotation = Vector3(0, 0, deg_to_rad(clampf(degrees, 0.0, MAX_TILT_DEG)))
 
 
 # The turret standing up from its mount: a dark ring, the drum, a shoulder and a low dome.
