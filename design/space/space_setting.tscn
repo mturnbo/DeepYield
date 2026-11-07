@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="1_rig"]
 [ext_resource type="Shader" path="res://design/space/nebula_backdrop.gdshader" id="2_neb"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://design/modules/habitat_module.gd" id="8_habitat"]
 [ext_resource type="Script" path="res://design/modules/electrolysis_plant.gd" id="9_plant"]
 [ext_resource type="Script" path="res://design/modules/ice_chunk.gd" id="10_ice"]
+[ext_resource type="Script" path="res://design/modules/ship_dock.gd" id="11_dock"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -40,14 +41,14 @@ light_color = Color(1, 0.95, 0.88, 1)
 light_energy = 1.3
 
 [node name="CameraRig" type="Node3D" parent="."]
-position = Vector3(30, -8, 30)
+position = Vector3(68, -10, 65)
 script = ExtResource("1_rig")
-zoom = 180.0
+zoom = 240.0
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
 projection = 1
 current = true
-size = 180.0
+size = 240.0
 near = 1.0
 far = 10000.0
 
@@ -73,6 +74,22 @@ script = ExtResource("5_frame")
 position = Vector3(60, 0, 0)
 script = ExtResource("7_command")
 
+[node name="FramePiece7" type="Node3D" parent="Platform"]
+position = Vector3(75, 0, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece8" type="Node3D" parent="Platform"]
+position = Vector3(90, 0, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece10" type="Node3D" parent="Platform"]
+position = Vector3(105, 0, 0)
+script = ExtResource("5_frame")
+
+[node name="ShipDock" type="Node3D" parent="Platform"]
+position = Vector3(135, 0, 0)
+script = ExtResource("11_dock")
+
 [node name="FramePiece3" type="Node3D" parent="Platform"]
 position = Vector3(60, 0, 15)
 rotation = Vector3(0, -1.5708, 0)
@@ -88,15 +105,22 @@ position = Vector3(60, 0, 60)
 script = ExtResource("8_habitat")
 
 [node name="FramePiece5" type="Node3D" parent="Platform"]
-position = Vector3(15, 0, 60)
+position = Vector3(60, 0, 75)
+rotation = Vector3(0, -1.5708, 0)
 script = ExtResource("5_frame")
 
 [node name="FramePiece6" type="Node3D" parent="Platform"]
-position = Vector3(30, 0, 60)
+position = Vector3(60, 0, 90)
+rotation = Vector3(0, -1.5708, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece9" type="Node3D" parent="Platform"]
+position = Vector3(60, 0, 105)
+rotation = Vector3(0, -1.5708, 0)
 script = ExtResource("5_frame")
 
 [node name="ElectrolysisPlant" type="Node3D" parent="Platform"]
-position = Vector3(0, 0, 60)
+position = Vector3(60, 0, 135)
 script = ExtResource("9_plant")
 
 [node name="IceChunk" type="Node3D" parent="Platform/ElectrolysisPlant"]

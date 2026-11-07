@@ -4,6 +4,8 @@ extends "res://design/modules/module_base.gd"
 ## three tall oxygen cylinders along the back and a small pump house. Under the keel
 ## is the ice cradle: a collar with four clamp arms that grip the top edge of a towed
 ## ice chunk. A chunk placed at ICE_MOUNT_Y locks into the cradle.
+## Because the chunk overhangs the base, the plant must sit at least 3 frame pieces
+## (45 m) from any other module, which puts its center 75 m or more from theirs.
 ## Distances are in meters.
 
 @export var tank_radius := 7.0:
