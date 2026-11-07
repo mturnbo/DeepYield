@@ -48,6 +48,24 @@ static func add_strut(st: SurfaceTool, from: Vector3, to: Vector3, thickness: fl
 	add_box(st, Vector3(along.length(), thickness, thickness), Transform3D(strut_basis, (from + to) / 2.0))
 
 
+# Walls around a convex outline of (x, z) points, with a flat top and bottom.
+static func add_extrusion(st: SurfaceTool, outline: Array, bottom: float, top: float) -> void:
+	var middle := Vector2.ZERO
+	for point in outline:
+		middle += point
+	middle /= outline.size()
+	var center := Vector3(middle.x, 0, middle.y)
+	for i in outline.size():
+		var a: Vector2 = outline[i]
+		var b: Vector2 = outline[(i + 1) % outline.size()]
+		var a3 := Vector3(a.x, 0, a.y)
+		var b3 := Vector3(b.x, 0, b.y)
+		var outward := (a3 + b3) / 2.0 - center
+		add_quad(st, a3 + Vector3(0, bottom, 0), b3 + Vector3(0, bottom, 0), b3 + Vector3(0, top, 0), a3 + Vector3(0, top, 0), outward)
+		add_triangle(st, center + Vector3(0, top, 0), a3 + Vector3(0, top, 0), b3 + Vector3(0, top, 0), Vector3.UP)
+		add_triangle(st, center + Vector3(0, bottom, 0), b3 + Vector3(0, bottom, 0), a3 + Vector3(0, bottom, 0), Vector3.DOWN)
+
+
 # A prism around the vertical axis, or a frustum when the two radii differ.
 # Radii are to the corners. With 8 sides and a 22.5 degree offset, flat sides face the X and Z axes.
 static func add_prism(st: SurfaceTool, sides: int, bottom_radius: float, top_radius: float, bottom_y: float, top_y: float, angle_offset: float) -> void:

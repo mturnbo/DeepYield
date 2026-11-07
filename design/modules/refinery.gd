@@ -84,8 +84,8 @@ func _rebuild() -> void:
 
 	var deck_top := hull_height / 2.0 + band_height + deck_height
 	var roof_bottom := deck_top + building_height
-	_add_extrusion(walls, _footprint(0.0), deck_top, roof_bottom)
-	_add_extrusion(roof, _footprint(0.8), roof_bottom, roof_bottom + 0.5)
+	MeshBuilder.add_extrusion(walls, _footprint(0.0), deck_top, roof_bottom)
+	MeshBuilder.add_extrusion(roof, _footprint(0.8), roof_bottom, roof_bottom + 0.5)
 
 	var east := building_width / 2.0
 	var vent_span := building_depth - corner_cut - 2.0
@@ -124,24 +124,6 @@ func _footprint(inset: float) -> Array:
 		Vector2(east, south - cut), Vector2(east - cut, south),
 		Vector2(west + cut, south), Vector2(west, south - cut),
 	]
-
-
-# Walls around a convex outline, with a flat top and bottom.
-func _add_extrusion(st: SurfaceTool, outline: Array, bottom: float, top: float) -> void:
-	var middle := Vector2.ZERO
-	for point in outline:
-		middle += point
-	middle /= outline.size()
-	var center := Vector3(middle.x, 0, middle.y)
-	for i in outline.size():
-		var a: Vector2 = outline[i]
-		var b: Vector2 = outline[(i + 1) % outline.size()]
-		var a3 := Vector3(a.x, 0, a.y)
-		var b3 := Vector3(b.x, 0, b.y)
-		var outward := (a3 + b3) / 2.0 - center
-		MeshBuilder.add_quad(st, a3 + Vector3(0, bottom, 0), b3 + Vector3(0, bottom, 0), b3 + Vector3(0, top, 0), a3 + Vector3(0, top, 0), outward)
-		MeshBuilder.add_triangle(st, center + Vector3(0, top, 0), a3 + Vector3(0, top, 0), b3 + Vector3(0, top, 0), Vector3.UP)
-		MeshBuilder.add_triangle(st, center + Vector3(0, bottom, 0), b3 + Vector3(0, bottom, 0), a3 + Vector3(0, bottom, 0), Vector3.DOWN)
 
 
 func _add_round(st: SurfaceTool, center: Vector3, radius: float, bottom: float, top: float) -> void:

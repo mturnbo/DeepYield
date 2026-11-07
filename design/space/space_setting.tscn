@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="1_rig"]
 [ext_resource type="Shader" path="res://design/space/nebula_backdrop.gdshader" id="2_neb"]
@@ -17,6 +17,8 @@
 [ext_resource type="Script" path="res://design/modules/fusion_generator.gd" id="15_fusion"]
 [ext_resource type="Script" path="res://design/modules/refinery.gd" id="16_refinery"]
 [ext_resource type="Script" path="res://design/ships/robot_ship.gd" id="17_ship"]
+[ext_resource type="Script" path="res://design/modules/reinforcing_junction.gd" id="18_junction"]
+[ext_resource type="Script" path="res://design/modules/defense_junction.gd" id="19_defense"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -47,14 +49,14 @@ light_color = Color(1, 0.95, 0.88, 1)
 light_energy = 1.3
 
 [node name="CameraRig" type="Node3D" parent="."]
-position = Vector3(30, -10, 25)
+position = Vector3(18, -10, 25)
 script = ExtResource("1_rig")
-zoom = 310.0
+zoom = 330.0
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
 projection = 1
 current = true
-size = 310.0
+size = 330.0
 near = 1.0
 far = 10000.0
 
@@ -211,6 +213,34 @@ script = ExtResource("17_ship")
 [node name="ApproachingShip" type="Node3D" parent="Platform"]
 position = Vector3(135, 9, 32)
 script = ExtResource("17_ship")
+
+[node name="FramePiece21" type="Node3D" parent="Platform"]
+position = Vector3(-75, 0, 0)
+rotation = Vector3(0, 3.14159, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece22" type="Node3D" parent="Platform"]
+position = Vector3(-90, 0, 0)
+rotation = Vector3(0, 3.14159, 0)
+script = ExtResource("5_frame")
+
+[node name="ReinforcingJunction" type="Node3D" parent="Platform"]
+position = Vector3(-110, 0, 0)
+script = ExtResource("18_junction")
+
+[node name="FramePiece23" type="Node3D" parent="Platform"]
+position = Vector3(-110, 0, 5)
+rotation = Vector3(0, -1.5708, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece24" type="Node3D" parent="Platform"]
+position = Vector3(-110, 0, 20)
+rotation = Vector3(0, -1.5708, 0)
+script = ExtResource("5_frame")
+
+[node name="DefenseJunction" type="Node3D" parent="Platform"]
+position = Vector3(-110, 0, 40)
+script = ExtResource("19_defense")
 
 [node name="AsteroidField" type="Node3D" parent="."]
 position = Vector3(-636, 0, -636)
