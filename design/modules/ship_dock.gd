@@ -133,11 +133,11 @@ func _rebuild() -> void:
 		else:
 			_add_wall_box(walls, facing, Vector3(WALL, hangar_height, _side_length()), deck_top + hangar_height / 2.0, 0.0)
 
-	# Partitions run from the middle out to the corners, splitting the hangar into four bays.
-	var corner := _corner_radius(hangar_across_flats) - WALL
+	# Partitions run from the middle out to the diagonal walls, splitting the hangar into four bays.
+	var reach := hangar_across_flats / 2.0 - WALL
 	for i in 4:
 		var facing := Basis(Vector3.UP, PI / 4.0 + i * PI / 2.0)
-		MeshBuilder.add_box(walls, Vector3(corner, hangar_height, 0.4), Transform3D(facing, facing * Vector3(corner / 2.0, deck_top + hangar_height / 2.0, 0)))
+		MeshBuilder.add_box(walls, Vector3(reach, hangar_height, 0.4), Transform3D(facing, facing * Vector3(reach / 2.0, deck_top + hangar_height / 2.0, 0)))
 
 	MeshBuilder.add_prism(roof, 8, _corner_radius(hangar_across_flats), _corner_radius(hangar_across_flats), deck_top + hangar_height, deck_top + hangar_height + 0.5, PI / 8.0)
 

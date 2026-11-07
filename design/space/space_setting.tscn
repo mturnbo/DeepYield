@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="1_rig"]
 [ext_resource type="Shader" path="res://design/space/nebula_backdrop.gdshader" id="2_neb"]
@@ -16,6 +16,7 @@
 [ext_resource type="Script" path="res://design/modules/helium3_storage.gd" id="14_he3"]
 [ext_resource type="Script" path="res://design/modules/fusion_generator.gd" id="15_fusion"]
 [ext_resource type="Script" path="res://design/modules/refinery.gd" id="16_refinery"]
+[ext_resource type="Script" path="res://design/ships/robot_ship.gd" id="17_ship"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -201,6 +202,15 @@ script = ExtResource("5_frame")
 [node name="Refinery" type="Node3D" parent="Platform"]
 position = Vector3(-60, 0, -60)
 script = ExtResource("16_refinery")
+
+[node name="ParkedShip" type="Node3D" parent="Platform"]
+position = Vector3(142.3, 7, 0)
+rotation = Vector3(0, 1.5708, 0)
+script = ExtResource("17_ship")
+
+[node name="ApproachingShip" type="Node3D" parent="Platform"]
+position = Vector3(135, 9, 32)
+script = ExtResource("17_ship")
 
 [node name="AsteroidField" type="Node3D" parent="."]
 position = Vector3(-636, 0, -636)
