@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="1_rig"]
 [ext_resource type="Shader" path="res://design/space/nebula_backdrop.gdshader" id="2_neb"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://design/modules/metal_storage.gd" id="13_metal"]
 [ext_resource type="Script" path="res://design/modules/helium3_storage.gd" id="14_he3"]
 [ext_resource type="Script" path="res://design/modules/fusion_generator.gd" id="15_fusion"]
+[ext_resource type="Script" path="res://design/modules/refinery.gd" id="16_refinery"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -45,14 +46,14 @@ light_color = Color(1, 0.95, 0.88, 1)
 light_energy = 1.3
 
 [node name="CameraRig" type="Node3D" parent="."]
-position = Vector3(40, -10, 35)
+position = Vector3(30, -10, 25)
 script = ExtResource("1_rig")
-zoom = 290.0
+zoom = 310.0
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
 projection = 1
 current = true
-size = 290.0
+size = 310.0
 near = 1.0
 far = 10000.0
 
@@ -186,6 +187,20 @@ script = ExtResource("5_frame")
 [node name="FusionGenerator" type="Node3D" parent="Platform"]
 position = Vector3(0, 0, 60)
 script = ExtResource("15_fusion")
+
+[node name="FramePiece19" type="Node3D" parent="Platform"]
+position = Vector3(-15, 0, -60)
+rotation = Vector3(0, 3.14159, 0)
+script = ExtResource("5_frame")
+
+[node name="FramePiece20" type="Node3D" parent="Platform"]
+position = Vector3(-30, 0, -60)
+rotation = Vector3(0, 3.14159, 0)
+script = ExtResource("5_frame")
+
+[node name="Refinery" type="Node3D" parent="Platform"]
+position = Vector3(-60, 0, -60)
+script = ExtResource("16_refinery")
 
 [node name="AsteroidField" type="Node3D" parent="."]
 position = Vector3(-636, 0, -636)
