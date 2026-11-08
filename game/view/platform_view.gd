@@ -117,7 +117,7 @@ func _update_build_look(state: GameState, platform_node: PlatformNode) -> void:
 
 func _set_transparency(root: Node, value: float) -> void:
 	for child in root.get_children():
-		if child is GeometryInstance3D:
+		if child is GeometryInstance3D and not child is Label3D:
 			child.transparency = value
 		_set_transparency(child, value)
 

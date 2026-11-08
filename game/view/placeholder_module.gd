@@ -42,6 +42,6 @@ func _add_factory(st: SurfaceTool, deck_top: float) -> void:
 
 
 func _add_gantry(st: SurfaceTool, deck_top: float) -> void:
-	for z in [-7.5, 7.5]:
-		MeshBuilder.add_box(st, Vector3(18, 10, 3), Transform3D(Basis(), Vector3(0, deck_top + 5, z)))
+	for x in [-8.5, 8.5]:
+		MeshBuilder.add_box(st, Vector3(3, 10, 18), Transform3D(Basis(), Vector3(x, deck_top + 5, 0)))
 	MeshBuilder.add_box(st, Vector3(20, 2, 3), Transform3D(Basis(), Vector3(0, deck_top + 11, 0)))
