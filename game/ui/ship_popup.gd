@@ -29,6 +29,8 @@ var _apply_label: Label
 var _fetch_buttons := {}
 var _fetch_label: Label
 var _repair_button: Button
+var _cancel_repair_button: Button
+var _repair_label: Label
 
 @onready var _scroll: ScrollContainer = $Margin/Scroll
 @onready var _list: VBoxContainer = $Margin/Scroll/List
@@ -140,6 +142,7 @@ func refresh() -> void:
 		_fetch_buttons[chunk].disabled = not comet_in_reach
 	_repair_button.disabled = ship.repair_requested
 	_repair_button.text = "Repair requested" if ship.repair_requested else "Repair"
+	_cancel_repair_button.visible = ship.repair_requested and not state.production.repair_started(_ship_id)
 	_fit_to_window()
 
 
@@ -298,7 +301,25 @@ func _on_fetch(chunk: int) -> void:
 func _add_repair() -> void:
 	_repair_button = Button.new()
 	_repair_button.add_theme_color_override("font_disabled_color", DISABLED)
-	_repair_button.pressed.connect(func() -> void:
-		_game.state.request_repair(_ship_id)
-		refresh())
+	_repair_button.pressed.connect(_on_repair)
 	_list.add_child(_repair_button)
+	_cancel_repair_button = Button.new()
+	_cancel_repair_button.text = "Cancel repair"
+	_cancel_repair_button.pressed.connect(_on_cancel_repair)
+	_list.add_child(_cancel_repair_button)
+	_repair_label = _add_label(RED)
+	_repair_label.visible = false
+
+
+func _on_repair() -> void:
+	_show_repair_refusal(_game.state.request_repair(_ship_id))
+
+
+func _on_cancel_repair() -> void:
+	_show_repair_refusal(_game.state.cancel_repair(_ship_id))
+
+
+func _show_repair_refusal(refusal: String) -> void:
+	_repair_label.visible = refusal != ""
+	_repair_label.text = refusal
+	refresh()

@@ -54,8 +54,10 @@ func add_repair(ship_id: int) -> void:
 
 
 func has_repair_for(ship_id: int) -> bool:
-	if queues["assembly"].has("ship_repair:" + str(ship_id)):
-		return true
+	return queues["assembly"].has("ship_repair:" + str(ship_id)) or repair_started(ship_id)
+
+
+func repair_started(ship_id: int) -> bool:
 	return current["assembly"].get("ship_id", -1) == ship_id and current["assembly"].get("item", "") == "ship_repair"
 
 

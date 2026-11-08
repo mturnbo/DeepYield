@@ -159,7 +159,24 @@ func request_repair(ship_id: int) -> String:
 	var ship_now := fleet.ship(ship_id)
 	if ship_now == null:
 		return "No such ship"
+	if ship_now.condition >= 1.0:
+		return "Already in full condition"
+	if layout.built_nodes("assembly").is_empty():
+		return "Build an assembly first"
 	ship_now.repair_requested = true
+	return ""
+
+
+func cancel_repair(ship_id: int) -> String:
+	var ship_now := fleet.ship(ship_id)
+	if ship_now == null:
+		return "No such ship"
+	if not ship_now.repair_requested:
+		return "No repair requested"
+	if production.repair_started(ship_id):
+		return "The repair has already started"
+	production.queues["assembly"].erase("ship_repair:" + str(ship_id))
+	ship_now.repair_requested = false
 	return ""
 
 

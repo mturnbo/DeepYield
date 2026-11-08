@@ -206,6 +206,9 @@ func test_fetch_with_plant_places_order() -> void:
 
 
 func test_repair_button_flow() -> void:
+	Helpers.place_starter(game.state)
+	Helpers.finish_construction(game.state)
+	_ship().condition = 0.5
 	popup.open(0)
 	assert_eq(popup._repair_button.text, "Repair")
 	assert_false(popup._repair_button.disabled)
@@ -301,3 +304,43 @@ func test_popup_and_module_panel_exclude_each_other() -> void:
 	panel.open(0)
 	assert_true(panel.visible)
 	assert_false(popup.visible)
+
+
+func test_repair_refusals_show_in_red() -> void:
+	popup.open(0)
+	popup._repair_button.pressed.emit()
+	assert_true(popup._repair_label.visible)
+	assert_eq(popup._repair_label.text, "Already in full condition")
+	assert_eq(popup._repair_label.get_theme_color("font_color"), popup.RED)
+	_ship().condition = 0.5
+	popup._repair_button.pressed.emit()
+	assert_eq(popup._repair_label.text, "Build an assembly first")
+	assert_false(_ship().repair_requested)
+
+
+func test_cancel_repair_button_appears_while_waiting_and_cancels() -> void:
+	Helpers.place_starter(game.state)
+	Helpers.finish_construction(game.state)
+	_ship().condition = 0.5
+	popup.open(0)
+	assert_false(popup._cancel_repair_button.visible)
+	popup._repair_button.pressed.emit()
+	assert_true(popup._cancel_repair_button.visible)
+	popup._cancel_repair_button.pressed.emit()
+	assert_false(_ship().repair_requested)
+	assert_false(popup._cancel_repair_button.visible)
+	assert_eq(popup._repair_button.text, "Repair")
+
+
+func test_cancel_repair_button_hides_once_the_repair_has_started() -> void:
+	Helpers.place_starter(game.state)
+	Helpers.finish_construction(game.state)
+	game.state.stock.add("module_part", 1.0)
+	_ship().condition = 0.5
+	popup.open(0)
+	popup._repair_button.pressed.emit()
+	game.state.step()
+	assert_true(game.state.production.repair_started(0))
+	popup.refresh()
+	assert_false(popup._cancel_repair_button.visible)
+	assert_eq(popup._repair_button.text, "Repair requested")

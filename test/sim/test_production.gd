@@ -209,3 +209,65 @@ func test_blocked_first_item_is_not_skipped() -> void:
 	assert_true(state.production.current["factory"].is_empty())
 	assert_eq(state.production.queues["factory"], ["module_part", "frame_piece"])
 	assert_eq(state.stock.amount("frame_piece"), frames_before)
+
+
+func _docked_worn_ship() -> MiningShip:
+	var docked: MiningShip = state.fleet.ships[0]
+	docked.state = "docked"
+	docked.bay = 0
+	docked.condition = 0.5
+	return docked
+
+
+func test_repair_refused_at_full_condition() -> void:
+	var docked := _docked_worn_ship()
+	docked.condition = 1.0
+	assert_eq(state.request_repair(docked.id), "Already in full condition")
+	assert_false(docked.repair_requested)
+
+
+func test_repair_refused_without_a_built_assembly() -> void:
+	var bare := Helpers.new_state()
+	var worn: MiningShip = bare.fleet.ships[0]
+	worn.condition = 0.5
+	assert_eq(bare.request_repair(worn.id), "Build an assembly first")
+	assert_false(worn.repair_requested)
+
+
+func test_cancel_before_start_removes_queue_entry_and_ship_leaves() -> void:
+	var docked := _docked_worn_ship()
+	docked.assignment = {"site": "asteroids", "materials": ["iron"]}
+	docked.docked_hours = 0
+	assert_eq(state.request_repair(docked.id), "")
+	state.queue_item("assembly", "habitat")
+	state.step()
+	assert_true(state.production.queues["assembly"].has("ship_repair:" + str(docked.id)))
+	assert_eq(state.cancel_repair(docked.id), "")
+	assert_false(docked.repair_requested)
+	assert_false(state.production.queues["assembly"].has("ship_repair:" + str(docked.id)))
+	assert_eq(state.production.queues["assembly"], ["habitat"])
+	_steps(30)
+	assert_ne(docked.state, "docked")
+
+
+func test_cancel_before_the_ship_is_docked_just_clears_the_request() -> void:
+	var away: MiningShip = state.fleet.ships[0]
+	away.state = "working"
+	away.condition = 0.5
+	assert_eq(state.request_repair(away.id), "")
+	assert_eq(state.cancel_repair(away.id), "")
+	assert_false(away.repair_requested)
+
+
+func test_cancel_after_the_repair_started_is_refused() -> void:
+	var docked := _docked_worn_ship()
+	state.stock.add("module_part", 1.0)
+	state.request_repair(docked.id)
+	state.step()
+	assert_eq(state.production.current["assembly"]["item"], "ship_repair")
+	assert_eq(state.cancel_repair(docked.id), "The repair has already started")
+	assert_true(docked.repair_requested)
+
+
+func test_cancel_without_a_request_is_refused() -> void:
+	assert_eq(state.cancel_repair(0), "No repair requested")
