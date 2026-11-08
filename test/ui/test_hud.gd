@@ -5,14 +5,17 @@ const Hud = preload("res://game/ui/hud.gd")
 
 var game: Node
 var hud: Node
+var original_size: Vector2i
 
 
 func before_each() -> void:
+	original_size = get_tree().root.size
 	game = add_child_autofree(load("res://game/main.tscn").instantiate())
 	hud = game.get_node("UI/Hud")
 
 
 func after_each() -> void:
+	get_tree().root.size = original_size
 	await get_tree().process_frame
 
 
@@ -118,17 +121,25 @@ func test_fuel_exact_text_below_threshold() -> void:
 	assert_eq(hud._fuel_label.text, "Fuel 100 h")
 
 
-func test_reserve_gold_below_threshold() -> void:
+func test_reserve_gold_below_threshold_when_someone_depends_on_the_ship() -> void:
 	game.state.life.reserve = 1800.0
+	game.state.life.dependent = 3
 	hud.refresh()
-	assert_eq(hud._reserve_label.text, "Ship reserve 150 h")
+	assert_eq(hud._reserve_label.text, "Reserve 150 h")
 	assert_eq(hud._reserve_label.get_theme_color("font_color"), Hud.GOLD)
+
+
+func test_reserve_not_gold_when_nobody_depends_on_the_ship() -> void:
+	game.state.life.reserve = 1800.0
+	game.state.life.dependent = 0
+	hud.refresh()
+	assert_eq(hud._reserve_label.get_theme_color("font_color"), Hud.LIGHT)
 
 
 func test_reserve_normal_above_threshold() -> void:
 	game.state.life.reserve = 3600.0
 	hud.refresh()
-	assert_eq(hud._reserve_label.text, "Ship reserve 300 h")
+	assert_eq(hud._reserve_label.text, "Reserve 300 h")
 	assert_eq(hud._reserve_label.get_theme_color("font_color"), Hud.LIGHT)
 
 
@@ -152,7 +163,7 @@ func test_power_label_gold_when_short() -> void:
 	game.state.power.demand_mw = 35.0
 	game.state.power.short = true
 	hud.refresh()
-	assert_eq(hud._power_label.text, "Power 20 / 35 MW")
+	assert_eq(hud._power_label.text, "Power 35 of 20 MW")
 	assert_eq(hud._power_label.get_theme_color("font_color"), Hud.GOLD)
 
 
@@ -161,7 +172,7 @@ func test_power_label_normal_when_not_short() -> void:
 	game.state.power.demand_mw = 5.0
 	game.state.power.short = false
 	hud.refresh()
-	assert_eq(hud._power_label.text, "Power 20 / 5 MW")
+	assert_eq(hud._power_label.text, "Power 5 of 20 MW")
 	assert_eq(hud._power_label.get_theme_color("font_color"), Hud.LIGHT)
 
 
@@ -179,3 +190,31 @@ func test_deferred_ready_refresh_fills_the_top_bar() -> void:
 	await get_tree().process_frame
 	assert_eq(fresh.get_node("UI/Hud")._clock_label.text, "Day 1, 00:00")
 	assert_eq(fresh.get_node("UI/Hud")._crew_label.text, "Crew 12")
+
+
+func test_late_game_top_bar_fits_the_window() -> void:
+	get_tree().root.size = Vector2i(1152, 648)
+	game.state.hour = 96 * 24 + 10
+	game.state.power.demand_mw = 120.0
+	game.state.power.supply_mw = 120.0
+	game.state.life.on_platform = 12
+	game.state.life.reserve = 1000.0 * 12.0
+	game.state.cradle_ice = 3000.0
+	game.state.robots = 24
+	game.state.stock.items["frame_piece"] = 99.0
+	hud._refresh_numbers(game.state)
+	hud._clock_label.text = Hud.day_hour_text(game.state.hour)
+	hud._fuel_label.text = "Fuel 9999 h"
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var bar: Control = hud.get_node("TopBar")
+	var window_width: float = get_viewport().get_visible_rect().size.x
+	assert_gte(bar.get_global_rect().position.x, 0.0)
+	assert_lte(bar.get_global_rect().end.x, window_width)
+	assert_lte(hud.menu_button.get_global_rect().end.x, window_width)
+	assert_gte(hud._clock_label.get_global_rect().position.x, 0.0)
+
+
+func test_side_panel_starts_below_the_top_bar() -> void:
+	hud.refresh()
+	assert_gte(hud.get_node("SidePanel").offset_top, hud.bar_bottom())

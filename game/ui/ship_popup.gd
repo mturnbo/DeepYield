@@ -7,7 +7,7 @@ const MUTED := Color(0.6, 0.65, 0.75)
 const MINT := Color("7fe8cb")
 const RED := Color("e5534b")
 const DISABLED := Color(1, 1, 1, 0.3)
-const TOP_OFFSET := 64.0
+const BAR_GAP := 4.0
 const WINDOW_MARGIN := 40.0
 const SITES := ["nebula", "asteroids"]
 const LEG_STATES := ["outbound", "working", "inbound", "ice_outbound", "carving", "towing"]
@@ -143,7 +143,8 @@ func refresh() -> void:
 
 
 func _fit_to_window() -> void:
-	var available := get_viewport().get_visible_rect().size.y - TOP_OFFSET - WINDOW_MARGIN
+	offset_top = _game.get_node("UI/Hud").bar_bottom() + BAR_GAP
+	var available := get_viewport().get_visible_rect().size.y - offset_top - WINDOW_MARGIN
 	_scroll.custom_minimum_size.y = minf(_list.get_combined_minimum_size().y, available)
 
 

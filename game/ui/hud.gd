@@ -6,7 +6,7 @@ const LIGHT := Color(0.9, 0.92, 0.96)
 const MUTED := Color(0.6, 0.65, 0.75)
 const MINT := Color("7fe8cb")
 const GOLD := Color("f2c96b")
-const LOW_HOURS := 200.0
+const BAR_GAP := 4.0
 const MENU_END_RUN := 0
 const MENU_NEW_RUN := 1
 
@@ -26,7 +26,10 @@ var _crew_label: Label
 var _robots_label: Label
 var _frame_label: Label
 
-@onready var _row: HBoxContainer = $TopBar/Margin/Row
+@onready var _top_bar: PanelContainer = $TopBar
+@onready var _side_panel: PanelContainer = $SidePanel
+@onready var _row: HBoxContainer = $TopBar/Margin/Rows/Row
+@onready var _numbers: HFlowContainer = $TopBar/Margin/Rows/Numbers
 @onready var _alerts: VBoxContainer = $SidePanel/Margin/List/Alerts
 @onready var _checklist: VBoxContainer = $SidePanel/Margin/List/Checklist
 @onready var _fleet: VBoxContainer = $SidePanel/Margin/List/FleetScroll/Fleet
@@ -34,6 +37,10 @@ var _frame_label: Label
 
 static func day_hour_text(hour: int) -> String:
 	return "Day %d, %02d:00" % [hour / 24 + 1, hour % 24]
+
+
+func bar_bottom() -> float:
+	return _top_bar.offset_top + maxf(_top_bar.size.y, _top_bar.get_combined_minimum_size().y)
 
 
 func _ready() -> void:
@@ -58,25 +65,26 @@ func refresh() -> void:
 	_refresh_alerts(state)
 	_refresh_checklist(state)
 	_refresh_fleet(state)
+	_side_panel.offset_top = bar_bottom() + BAR_GAP
 
 
 func _build_top_bar() -> void:
-	_clock_label = _add_label()
+	_clock_label = _add_label(_row)
 	_add_speed_button("paused", "Pause")
 	_add_speed_button("normal", "▶")
 	_add_speed_button("fast", "▶▶")
-	_power_label = _add_label()
-	_fuel_label = _add_label()
-	_platform_label = _add_label()
-	_reserve_label = _add_label()
-	_ice_label = _add_label()
-	_crew_label = _add_label()
-	_robots_label = _add_label()
-	_frame_label = _add_label()
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_row.add_child(spacer)
 	_add_menu_button()
+	_power_label = _add_label(_numbers)
+	_fuel_label = _add_label(_numbers)
+	_platform_label = _add_label(_numbers)
+	_reserve_label = _add_label(_numbers)
+	_ice_label = _add_label(_numbers)
+	_crew_label = _add_label(_numbers)
+	_robots_label = _add_label(_numbers)
+	_frame_label = _add_label(_numbers)
 
 
 func _add_menu_button() -> void:
@@ -97,10 +105,10 @@ func _on_menu_item(id: int) -> void:
 		_game.new_run(_game.run_seed + 1)
 
 
-func _add_label() -> Label:
+func _add_label(parent: Container) -> Label:
 	var label := Label.new()
 	label.add_theme_color_override("font_color", LIGHT)
-	_row.add_child(label)
+	parent.add_child(label)
 	return label
 
 
@@ -119,13 +127,14 @@ func _refresh_speed_buttons() -> void:
 
 
 func _refresh_numbers(state: GameState) -> void:
-	_power_label.text = "Power %d / %d MW" % [state.power.supply_mw, state.power.demand_mw]
+	_power_label.text = "Power %d of %d MW" % [state.power.demand_mw, state.power.supply_mw]
 	_set_warning(_power_label, state.power.short)
 	_refresh_fuel(state)
 	_platform_label.text = "On platform %d / %d" % [state.life.on_platform, state.crew]
 	var reserve := state.life.reserve_hours(state.crew)
-	_reserve_label.text = "Ship reserve %d h" % int(floor(reserve))
-	_set_warning(_reserve_label, reserve < LOW_HOURS)
+	_reserve_label.text = "Reserve %d h" % int(floor(reserve))
+	var reserve_low: bool = reserve < float(state.balance["alerts"]["reserve_low_hours"])
+	_set_warning(_reserve_label, reserve_low and state.life.dependent > 0)
 	_ice_label.text = "Ice %d u" % int(state.cradle_ice)
 	_crew_label.text = "Crew %d" % state.crew
 	var free_robots := state.robots - state.construction.robots_busy()
@@ -144,7 +153,7 @@ func _refresh_fuel(state: GameState) -> void:
 		_set_warning(_fuel_label, false)
 		return
 	_fuel_label.text = "Fuel %d h" % int(floor(fuel_hours))
-	_set_warning(_fuel_label, fuel_hours < LOW_HOURS)
+	_set_warning(_fuel_label, fuel_hours < float(state.balance["alerts"]["fuel_low_hours"]))
 
 
 func _set_warning(label: Label, warning: bool) -> void:
