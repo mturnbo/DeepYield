@@ -163,3 +163,17 @@ func test_assignment_resumes_after_ice() -> void:
 	_step(state, 5)
 	assert_eq(ship.state, "outbound")
 	assert_eq(ship.destination, "nebula")
+
+
+func test_repair_request_keeps_ship_docked_for_ice() -> void:
+	var state := _state_with_plant()
+	_comet_now(state, 1.0, 200)
+	var ship := state.fleet.ship(0)
+	ship.repair_requested = true
+	assert_eq(state.fetch_ice(0, 1000), "")
+	_step(state, 5)
+	assert_eq(ship.state, "docked")
+	assert_eq(ship.ice_order, 1000)
+	ship.repair_requested = false
+	_step(state, 1)
+	assert_eq(ship.state, "ice_outbound")
