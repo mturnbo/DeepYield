@@ -34,7 +34,7 @@ func check_placement(from_id: int, port: int, run: int, kind: String) -> String:
 	var from_node := node(from_id)
 	if from_node.links[port] != -1:
 		return "That port is already used"
-	if from_node.kind == "ship_dock":
+	if from_node.kind == "ship_dock" and from_node.links.count(-1) < 4:
 		return "The dock can only join one module"
 	var center := new_center(from_id, port, run, kind)
 	var too_close := _find_too_close(kind, center)

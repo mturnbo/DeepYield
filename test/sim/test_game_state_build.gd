@@ -124,3 +124,17 @@ func test_no_steps_after_outcome() -> void:
 	state.step()
 	assert_eq(state.hour, 0)
 	assert_eq(state.outcome, "ended")
+
+
+func test_dock_first_then_one_module_from_it() -> void:
+	state.hour = 3
+	assert_eq(state.place_first("ship_dock", Vector2(-200, 0)), "")
+	assert_eq(state.place(0, 0, 3, "metal_storage"), "")
+	assert_eq(state.place(0, 1, 3, "gas_storage"), "The dock can only join one module")
+
+
+func test_dock_placed_from_a_module_is_still_refused() -> void:
+	state.place_first("command", Vector2.ZERO)
+	state.place(0, 0, 3, "ship_dock")
+	var dock_id := state.layout.nodes.size() - 1
+	assert_eq(state.place(dock_id, 0, 3, "refinery"), "The dock can only join one module")

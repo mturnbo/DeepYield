@@ -44,6 +44,14 @@ func test_dock_joins_only_one_module() -> void:
 	assert_eq(layout.check_placement(dock.id, 1, 1, "junction"), "The dock can only join one module")
 
 
+func test_unlinked_dock_can_start_the_platform() -> void:
+	var first := PlatformLayout.new(Balance.load_default()["layout"])
+	var dock := first.add_first("ship_dock", Vector2(-200, 0))
+	assert_eq(first.check_placement(dock.id, 0, 3, "metal_storage"), "")
+	first.add(dock.id, 0, 3, "metal_storage")
+	assert_eq(first.check_placement(dock.id, 1, 3, "refinery"), "The dock can only join one module")
+
+
 func test_used_port_refused() -> void:
 	layout.add(0, 0, 2, "fusion_generator")
 	assert_eq(layout.check_placement(0, 0, 3, "refinery"), "That port is already used")
