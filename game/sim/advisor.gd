@@ -1,11 +1,6 @@
 class_name Advisor
 extends RefCounted
 
-const MATERIALS := [
-	"hydrogen", "helium", "nitrogen", "argon",
-	"iron", "nickel", "magnesium", "silicon", "aluminum", "platinum", "palladium",
-]
-
 
 static func alerts(state: GameState) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -49,9 +44,11 @@ static func checklist(state: GameState) -> Array[Dictionary]:
 
 
 static func _storage_full(state: GameState) -> bool:
-	for material in MATERIALS:
-		if state.storage.capacity(material) > 0.0 and state.storage.is_full(material):
-			return true
+	var containers: Dictionary = state.balance["storage"]
+	for container in containers:
+		for material in containers[container]:
+			if state.storage.capacity(material) > 0.0 and state.storage.is_full(material):
+				return true
 	return false
 
 
