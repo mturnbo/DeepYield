@@ -13,6 +13,7 @@ var crew := 12
 var robots := 20
 var construction: Construction
 var power: Power
+var comets: Comets
 var outcome := ""
 var collapse_reason := ""
 var _arrival_ship: Vector2
@@ -25,6 +26,7 @@ func _init(game_balance: Dictionary, seed: int) -> void:
 	storage = Storage.new(balance["storage"])
 	construction = Construction.new(balance["work"])
 	power = Power.new(balance)
+	comets = Comets.new(balance["comets"], rng)
 	crew = int(balance["start"]["crew"])
 	robots = int(balance["start"]["robots"])
 	stock.add("frame_piece", float(balance["start"]["frame_pieces"]))
