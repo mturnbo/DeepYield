@@ -22,15 +22,19 @@ const PIECE_LENGTH := 15.0
 const FRAME_ROTATIONS := [0.0, -PI / 2.0, PI, PI / 2.0]
 const DIRECTIONS := [Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0), Vector2(0, -1)]
 const GHOST_TRANSPARENCY := 0.6
+const BASE_KITS := ["command", "gas_storage", "fusion_generator", "metal_storage"]
+const PIECES_PER_BUNDLE := 4
 
 var visuals := {}
 var _game: Node
 var _labels := {}
 var _ice_chunks := {}
+var _arrival_ship: Node3D
 
 
 func _ready() -> void:
 	_game = get_parent()
+	_arrival_ship = _game.get_node_or_null("ArrivalShip")
 	_game.stepped.connect(sync)
 	_game.run_started.connect(_on_run_started)
 	sync.call_deferred()
@@ -68,6 +72,31 @@ func sync() -> void:
 			_create_visual(state, platform_node)
 		_update_build_look(state, platform_node)
 	_update_ice(state)
+	_update_arrival_ship(state)
+
+
+static func bases_present(state: GameState) -> Array:
+	var present := []
+	for kit in BASE_KITS:
+		present.append(state.kits.get(kit, 0) > 0)
+	return present
+
+
+static func frame_bundles_present(state: GameState) -> int:
+	var on_ship := int(state.balance["start"]["frame_pieces"])
+	var used_from_ship := mini(on_ship, state.layout.frame_piece_count(false))
+	return ceili((on_ship - used_from_ship) / float(PIECES_PER_BUNDLE))
+
+
+func _update_arrival_ship(state: GameState) -> void:
+	if _arrival_ship == null:
+		return
+	var bases := bases_present(state)
+	if _arrival_ship.bases_present != bases:
+		_arrival_ship.bases_present = bases
+	var bundles := frame_bundles_present(state)
+	if _arrival_ship.frame_bundles_present != bundles:
+		_arrival_ship.frame_bundles_present = bundles
 
 
 func _create_visual(state: GameState, platform_node: PlatformNode) -> void:

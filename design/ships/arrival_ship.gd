@@ -47,6 +47,17 @@ extends Node3D
 		engine_color = value
 		_rebuild()
 
+# Which of the four bases (in BASES order) are still on the ship, and how many of
+# the eight frame assemblies are still in the corner pockets.
+@export var bases_present := [true, true, true, true]:
+	set(value):
+		bases_present = value
+		_rebuild()
+@export var frame_bundles_present := 8:
+	set(value):
+		frame_bundles_present = value
+		_rebuild()
+
 const ModuleBaseScript := preload("res://design/modules/module_base.gd")
 const FramePieceScript := preload("res://design/modules/frame_piece.gd")
 const PlasmaTurretScript := preload("res://design/modules/plasma_turret.gd")
@@ -217,7 +228,10 @@ func _add_midsection(hull: SurfaceTool, dark: SurfaceTool) -> void:
 		[CARGO_BACK, _profile(CORE, half, -half, 2.0)],
 		[MID_BACK, _profile(CORE, half, -half, 2.0)],
 	])
-	for entry in BASES:
+	for index in BASES.size():
+		if not bases_present[index]:
+			continue
+		var entry: Array = BASES[index]
 		var turn := Basis(Vector3.BACK, entry[1])
 		var base: Node3D = ModuleBaseScript.new()
 		base.band_color = entry[0]
@@ -229,9 +243,13 @@ func _add_midsection(hull: SurfaceTool, dark: SurfaceTool) -> void:
 			MeshBuilder.add_box(dark, Vector3(3.0, 1.2, 3.0), Transform3D(turn * Basis(Vector3.UP, PI / 4.0), turn * (direction * 12.0 + Vector3(0, half + 0.6, 0))))
 
 	var pocket := half + 0.6 + 0.5 * (2.0 * FRAME_SIZE + 0.6)
+	var bundles_built := 0
 	for x_side in [-1.0, 1.0]:
 		for y_side in [-1.0, 1.0]:
 			for z_start in [-FRAME_PIECE_LENGTH, 0.0]:
+				if bundles_built >= frame_bundles_present:
+					return
+				bundles_built += 1
 				_add_frame_assembly(dark, Vector3(x_side * pocket, y_side * pocket, z_start), x_side, y_side)
 
 
