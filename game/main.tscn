@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://game/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="2_rig"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://design/space/asteroid_field.gd" id="4_field"]
 [ext_resource type="Script" path="res://design/space/comet.gd" id="5_comet"]
 [ext_resource type="Script" path="res://design/ships/arrival_ship.gd" id="6_arrival"]
+[ext_resource type="Script" path="res://game/view/platform_view.gd" id="7_platform"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -68,6 +69,7 @@ position = Vector3(-260, 0, 0)
 script = ExtResource("6_arrival")
 
 [node name="PlatformView" type="Node3D" parent="."]
+script = ExtResource("7_platform")
 
 [node name="FleetView" type="Node3D" parent="."]
 
