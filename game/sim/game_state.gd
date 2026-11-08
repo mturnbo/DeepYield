@@ -15,6 +15,7 @@ var construction: Construction
 var power: Power
 var comets: Comets
 var fleet: Fleet
+var production: Production
 var cradle_ice := 0.0
 var ice_delivered := false
 var outcome := ""
@@ -30,6 +31,7 @@ func _init(game_balance: Dictionary, seed: int) -> void:
 	construction = Construction.new(balance["work"])
 	power = Power.new(balance)
 	comets = Comets.new(balance["comets"], rng)
+	production = Production.new(balance)
 	fleet = Fleet.new(balance, int(balance["start"]["mining_ships"]))
 	crew = int(balance["start"]["crew"])
 	robots = int(balance["start"]["robots"])
@@ -47,6 +49,10 @@ func step() -> void:
 	if power.step(layout, storage, crew) == "energy":
 		outcome = "collapsed"
 		collapse_reason = "energy"
+	_queue_repairs()
+	production.refine(_first_speed("refinery"), storage, stock)
+	_finish_job(production.work("factory", _first_speed("factory"), stock))
+	_finish_job(production.work("assembly", _first_speed("assembly"), stock))
 	var pass_index := comets.current(hour)
 	var comet: Dictionary = comets.passes[pass_index] if pass_index != -1 else {}
 	fleet.step(_any_dock_running(), storage, stock, comet, _deliver_chunk)
@@ -155,6 +161,24 @@ func fetch_ice(ship_id: int, chunk: int) -> String:
 	return ""
 
 
+func queue_item(building: String, item: String) -> String:
+	if not production.queues.has(building):
+		return "No such building"
+	if not balance["recipes"][building].has(item) or item == "ship_repair":
+		return building.capitalize() + " can't make that"
+	production.queues[building].append(item)
+	return ""
+
+
+func remove_queued(building: String, index: int) -> void:
+	if not production.queues.has(building):
+		return
+	var queue: Array = production.queues[building]
+	if index < 0 or index >= queue.size() or queue[index].begins_with("ship_repair:"):
+		return
+	queue.remove_at(index)
+
+
 func end_run() -> void:
 	outcome = "ended"
 
@@ -165,6 +189,37 @@ func _deliver_chunk(units: int) -> bool:
 	cradle_ice += units
 	ice_delivered = true
 	return true
+
+
+func _first_speed(kind: String) -> float:
+	var built := layout.built_nodes(kind)
+	if built.is_empty():
+		return 0.0
+	return speed_of(built[0].id)
+
+
+func _queue_repairs() -> void:
+	for each_ship in fleet.ships:
+		if each_ship.state == "docked" and each_ship.repair_requested and not production.has_repair_for(each_ship.id):
+			production.add_repair(each_ship.id)
+
+
+func _finish_job(job: Dictionary) -> void:
+	if job.is_empty():
+		return
+	var item: String = job["item"]
+	if item == "frame_piece" or item == "module_part":
+		stock.add(item, 1.0)
+	elif item == "mining_ship":
+		fleet.add_ship()
+	elif item == "robot":
+		robots += 1
+	elif item == "ship_repair":
+		var repaired := fleet.ship(job["ship_id"])
+		repaired.condition = 1.0
+		repaired.repair_requested = false
+	else:
+		assembled[item] = assembled.get(item, 0) + 1
 
 
 func _any_dock_running() -> bool:

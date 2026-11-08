@@ -31,3 +31,9 @@ func test_stock_take_all_is_all_or_nothing() -> void:
 	assert_true(stock.take_all({"iron": 3.0, "nickel": 1.0}))
 	assert_eq(stock.amount("iron"), 0.0)
 	assert_eq(stock.amount("nickel"), 0.0)
+
+
+func test_take_all_tolerates_tiny_shortfall_and_clamps() -> void:
+	stock.add("iron", 0.99995)
+	assert_true(stock.take_all({"iron": 1.0}))
+	assert_eq(stock.amount("iron"), 0.0)
