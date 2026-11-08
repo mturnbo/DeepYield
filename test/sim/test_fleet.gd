@@ -176,11 +176,11 @@ func test_no_dock_running_means_holding() -> void:
 	var fleet := Fleet.new(Balance.load_default(), 1)
 	var storage := Storage.new(Balance.load_default()["storage"])
 	var stock := Stock.new()
-	fleet.step(true, storage, stock)
+	fleet.step(true, storage, stock, {}, Callable())
 	var ship := fleet.ship(0)
 	ship.assignment = {"site": "nebula", "materials": ["hydrogen"]}
 	for hour in 46:
-		fleet.step(false, storage, stock)
+		fleet.step(false, storage, stock, {}, Callable())
 	assert_eq(ship.state, "holding")
-	fleet.step(true, storage, stock)
+	fleet.step(true, storage, stock, {}, Callable())
 	assert_eq(ship.state, "docked")

@@ -15,6 +15,8 @@ var construction: Construction
 var power: Power
 var comets: Comets
 var fleet: Fleet
+var cradle_ice := 0.0
+var ice_delivered := false
 var outcome := ""
 var collapse_reason := ""
 var _arrival_ship: Vector2
@@ -45,7 +47,9 @@ func step() -> void:
 	if power.step(layout, storage, crew) == "energy":
 		outcome = "collapsed"
 		collapse_reason = "energy"
-	fleet.step(_any_dock_running(), storage, stock)
+	var pass_index := comets.current(hour)
+	var comet: Dictionary = comets.passes[pass_index] if pass_index != -1 else {}
+	fleet.step(_any_dock_running(), storage, stock, comet, _deliver_chunk)
 	hour += 1
 
 
@@ -129,8 +133,38 @@ func request_repair(ship_id: int) -> String:
 	return ""
 
 
+func cradle_capacity() -> float:
+	return float(balance["comets"]["cradle"]) * layout.built_nodes("electrolysis_plant").size()
+
+
+func fetch_ice(ship_id: int, chunk: int) -> String:
+	var ship_now := fleet.ship(ship_id)
+	if ship_now == null:
+		return "No such ship"
+	if comets.current(hour) == -1:
+		return "No comet in reach"
+	if not balance["comets"]["chunks"].has(chunk):
+		return "Chunks are 1,000, 2,000 or 3,000 u"
+	if layout.built_nodes("electrolysis_plant").is_empty():
+		return "Build an electrolysis plant first"
+	if ship_now.state == "in_cargo":
+		return "That ship is still in the cargo bay"
+	if ship_now.ice_order > 0 or ["ice_outbound", "carving", "towing", "at_plant"].has(ship_now.state):
+		return "That ship is already fetching ice"
+	ship_now.ice_order = chunk
+	return ""
+
+
 func end_run() -> void:
 	outcome = "ended"
+
+
+func _deliver_chunk(units: int) -> bool:
+	if cradle_ice + units > cradle_capacity():
+		return false
+	cradle_ice += units
+	ice_delivered = true
+	return true
 
 
 func _any_dock_running() -> bool:

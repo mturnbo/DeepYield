@@ -15,6 +15,9 @@ var cargo: Dictionary = {}
 var repair_requested := false
 var waiting_for_room := false
 var docked_hours := 0
+var ice_order := 0
+var chunk := 0
+var tow_base := 0
 
 
 func _init(ship_id: int) -> void:
