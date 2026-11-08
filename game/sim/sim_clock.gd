@@ -19,3 +19,7 @@ func advance(delta: float) -> int:
 	var steps := mini(int(_pending_hours), MAX_STEPS_PER_FRAME)
 	_pending_hours -= steps
 	return steps
+
+
+func pending_fraction() -> float:
+	return minf(_pending_hours, 1.0)

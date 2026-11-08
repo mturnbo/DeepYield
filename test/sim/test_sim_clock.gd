@@ -30,3 +30,19 @@ func test_long_frame_is_capped_and_remainder_kept():
 	assert_eq(clock.advance(10.0), 8)
 	assert_eq(clock.advance(0.0), 8)
 	assert_eq(clock.advance(0.0), 4)
+
+
+func test_pending_fraction_is_the_part_of_an_hour_not_yet_stepped():
+	var clock := _make_clock("normal")
+	clock.advance(3.0)
+	assert_almost_eq(clock.pending_fraction(), 0.5, 0.0001)
+
+
+func test_pending_fraction_starts_at_zero():
+	assert_eq(_make_clock("normal").pending_fraction(), 0.0)
+
+
+func test_pending_fraction_never_exceeds_one_after_a_capped_frame():
+	var clock := _make_clock("fast")
+	clock.advance(10.0)
+	assert_eq(clock.pending_fraction(), 1.0)
