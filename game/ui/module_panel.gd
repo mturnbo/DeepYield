@@ -7,6 +7,14 @@ const MUTED := Color(0.6, 0.65, 0.75)
 const MINT := Color("7fe8cb")
 const GOLD := Color("f2c96b")
 const RED := Color("e5534b")
+const BAR_GAP := 4.0
+const PANEL_CHROME := 16.0
+const BOTTOM_MARGIN := 12.0
+const STOCK_KEYS := {
+	"refinery": ["iron", "nickel", "magnesium", "silicon", "aluminum", "platinum", "palladium", "argon"],
+	"factory": ["iron", "nickel", "aluminum", "silicon", "module_part", "frame_piece"],
+	"assembly": ["module_part", "silicon", "platinum", "palladium", "magnesium"],
+}
 const FLOWS := {
 	"command": {"in": "Nothing", "out": "The suggested build order"},
 	"ship_dock": {"in": "Mining ships and their cargo", "out": "Raw metal and gas to storage, argon to the refinery"},
@@ -31,6 +39,8 @@ var _status_label: Label
 var _takes_label: Label
 var _puts_label: Label
 var _storage_rows := {}
+var _stock_labels := {}
+var _waiting_label: Label
 var _job_label: Label
 var _job_bar: ProgressBar
 var _queue_rows: Array[String] = []
@@ -39,7 +49,8 @@ var _add_buttons := {}
 var _refusal_label: Label
 var _plant_label: Label
 
-@onready var _list: VBoxContainer = $Margin/List
+@onready var _scroll: ScrollContainer = $Margin/Scroll
+@onready var _list: VBoxContainer = $Margin/Scroll/List
 
 
 static func display_name(text: String) -> String:
@@ -69,10 +80,37 @@ static func status_color(text: String) -> Color:
 	return RED
 
 
+static func stock_text(state: GameState, key: String) -> String:
+	return "%s  %d" % [display_name(key), int(state.stock.amount(key))]
+
+
+static func waiting_text(state: GameState, building: String) -> String:
+	var queue: Array = state.production.queues[building]
+	if not state.production.current[building].is_empty() or queue.is_empty():
+		return ""
+	var recipe: Dictionary = state.balance["recipes"][building][String(queue[0]).get_slice(":", 0)]
+	var missing: Array[String] = []
+	for key in recipe["takes"]:
+		var short := int(ceil(float(recipe["takes"][key]) - state.stock.amount(key)))
+		if short > 0:
+			missing.append(_shortfall_text(key, short))
+	if missing.is_empty():
+		return ""
+	return "Waiting for: " + ", ".join(missing)
+
+
+static func _shortfall_text(key: String, short: int) -> String:
+	var name := key.replace("_", " ")
+	if short > 1 and (key == "module_part" or key == "frame_piece"):
+		name += "s"
+	return "%d %s" % [short, name]
+
+
 func _ready() -> void:
 	_game = get_parent().get_parent()
 	_game.stepped.connect(refresh)
 	_game.run_started.connect(_on_run_started)
+	get_viewport().size_changed.connect(refresh)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -106,6 +144,13 @@ func refresh() -> void:
 		_update_in_place(_game.state)
 	else:
 		_rebuild()
+	_fit_to_window()
+
+
+func _fit_to_window() -> void:
+	var top: float = _game.get_node("UI/Hud").bar_bottom() + BAR_GAP
+	var available := get_viewport().get_visible_rect().size.y - top - BOTTOM_MARGIN - PANEL_CHROME
+	_scroll.custom_minimum_size.y = minf(_list.get_combined_minimum_size().y, available)
 
 
 func _structure_of(state: GameState) -> Array:
@@ -123,6 +168,11 @@ func _update_in_place(state: GameState) -> void:
 	for material in _storage_rows:
 		_storage_rows[material]["label"].text = _storage_text(state, material)
 		_storage_rows[material]["bar"].value = _storage_fill(state, material)
+	for key in _stock_labels:
+		_stock_labels[key].text = stock_text(state, key)
+	if _waiting_label != null:
+		_waiting_label.text = waiting_text(state, state.layout.node(_node_id).kind)
+		_waiting_label.visible = _waiting_label.text != ""
 	if _job_bar != null:
 		_job_bar.value = _job_fill(state, state.layout.node(_node_id).kind)
 	if _plant_label != null:
@@ -140,7 +190,10 @@ func _rebuild() -> void:
 	match kind:
 		"gas_storage", "metal_storage":
 			_add_storage_rows(state, kind)
+		"refinery":
+			_add_stock(state, kind)
 		"factory", "assembly":
+			_add_stock(state, kind)
 			_add_production(state, kind)
 		"electrolysis_plant":
 			_add_plant(state)
@@ -151,6 +204,8 @@ func _clear_content() -> void:
 		_list.remove_child(child)
 		child.queue_free()
 	_storage_rows = {}
+	_stock_labels = {}
+	_waiting_label = null
 	_queue_rows = []
 	_remove_buttons = []
 	_add_buttons = {}
@@ -202,6 +257,20 @@ func _add_flows(kind: String) -> void:
 	_puts_label = _add_label("Puts out: " + FLOWS[kind]["out"], MUTED)
 
 
+func _add_stock(state: GameState, kind: String) -> void:
+	_add_label("Stock", MUTED)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
+	for key in STOCK_KEYS[kind]:
+		var label := Label.new()
+		label.text = stock_text(state, key)
+		label.add_theme_color_override("font_color", LIGHT)
+		grid.add_child(label)
+		_stock_labels[key] = label
+	_list.add_child(grid)
+
+
 func _add_storage_rows(state: GameState, kind: String) -> void:
 	for material in state.balance["storage"][kind]:
 		var label := _add_label(_storage_text(state, material), LIGHT)
@@ -229,6 +298,9 @@ func _plant_text(state: GameState) -> String:
 
 func _add_production(state: GameState, building: String) -> void:
 	_add_current_job(state, building)
+	var waiting := waiting_text(state, building)
+	_waiting_label = _add_label(waiting, GOLD)
+	_waiting_label.visible = waiting != ""
 	_add_queue(state, building)
 	_add_recipe_buttons(state, building)
 	_refusal_label = _add_label(_refusal, RED)
@@ -290,6 +362,9 @@ func _make_remove_button(building: String, index: int) -> Button:
 
 func _add_recipe_buttons(state: GameState, building: String) -> void:
 	_add_label("Add to queue", MUTED)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	_list.add_child(grid)
 	var recipes: Dictionary = state.balance["recipes"][building]
 	for item in recipes:
 		if item == "ship_repair":
@@ -298,8 +373,9 @@ func _add_recipe_buttons(state: GameState, building: String) -> void:
 		button.text = display_name(item)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.tooltip_text = _recipe_text(recipes[item])
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(func() -> void: _on_add(item))
-		_list.add_child(button)
+		grid.add_child(button)
 		_add_buttons[item] = button
 
 

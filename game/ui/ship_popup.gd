@@ -94,6 +94,7 @@ func _ready() -> void:
 	_game = get_parent().get_parent()
 	_game.stepped.connect(refresh)
 	_game.run_started.connect(_on_run_started)
+	get_viewport().size_changed.connect(refresh)
 
 
 func _unhandled_input(event: InputEvent) -> void:

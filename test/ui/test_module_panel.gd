@@ -7,15 +7,18 @@ const WorldPicker = preload("res://game/view/world_picker.gd")
 var game: Node
 var panel: Node
 var ids: Dictionary
+var original_size: Vector2i
 
 
 func before_each() -> void:
+	original_size = get_tree().root.size
 	game = add_child_autofree(load("res://game/main.tscn").instantiate())
 	panel = game.get_node("UI/ModulePanel")
 	ids = Helpers.place_starter(game.state)
 
 
 func after_each() -> void:
+	get_tree().root.size = original_size
 	await get_tree().process_frame
 
 
@@ -309,3 +312,95 @@ func test_queue_change_rebuilds_rows() -> void:
 	game.state.queue_item("factory", "frame_piece")
 	game.stepped.emit()
 	assert_eq(panel._queue_rows, ["Frame piece"])
+
+
+func test_assembly_panel_with_a_long_queue_stays_inside_the_window() -> void:
+	get_tree().root.size = Vector2i(1152, 648)
+	await get_tree().process_frame
+	_finish_building()
+	for i in 15:
+		game.state.queue_item("assembly", "habitat")
+	panel.open(ids["assembly"])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var window := get_viewport().get_visible_rect()
+	var bounds: Rect2 = panel.get_global_rect()
+	assert_gte(bounds.position.y, game.get_node("UI/Hud").bar_bottom())
+	assert_lte(bounds.end.y, window.end.y)
+	assert_true(window.encloses(panel._title_label.get_global_rect()))
+	assert_true(window.encloses(panel._close_button.get_global_rect()))
+	assert_gt(panel._scroll.get_child(0).get_combined_minimum_size().y, panel._scroll.size.y)
+
+
+func test_refinery_factory_and_assembly_show_refined_stock() -> void:
+	_finish_building()
+	game.state.stock.add("iron", 12.0)
+	game.state.stock.add("argon", 5.0)
+	game.state.stock.add("module_part", 7.0)
+	panel.open(ids["refinery"])
+	assert_eq(panel._stock_labels["iron"].text, "Iron  12")
+	assert_eq(panel._stock_labels["argon"].text, "Argon  5")
+	panel.open(ids["factory"])
+	assert_eq(panel._stock_labels["module_part"].text, "Module part  7")
+	assert_eq(panel._stock_labels["frame_piece"].text, "Frame piece  %d" % int(game.state.stock.amount("frame_piece")))
+	panel.open(ids["assembly"])
+	assert_eq(panel._stock_labels["module_part"].text, "Module part  7")
+	assert_eq(panel._stock_labels["platinum"].text, "Platinum  0")
+
+
+func test_stock_rows_update_in_place() -> void:
+	_finish_building()
+	panel.open(ids["refinery"])
+	game.state.stock.add("nickel", 3.0)
+	panel.refresh()
+	assert_eq(panel._stock_labels["nickel"].text, "Nickel  3")
+
+
+func test_blocked_queue_shows_the_exact_shortfall() -> void:
+	_finish_building()
+	game.state.stock.add("module_part", 3.0)
+	game.state.stock.add("silicon", 1.0)
+	game.state.queue_item("assembly", "habitat")
+	panel.open(ids["assembly"])
+	assert_true(panel._waiting_label.visible)
+	assert_eq(panel._waiting_label.text, "Waiting for: 7 module parts, 3 silicon")
+
+
+func test_waiting_text_names_a_single_part_and_the_metals_of_a_factory_recipe() -> void:
+	_finish_building()
+	game.state.stock.add("module_part", 5.0)
+	game.state.queue_item("assembly", "gas_storage")
+	game.state.queue_item("assembly", "robot")
+	assert_eq(ModulePanel.waiting_text(game.state, "assembly"), "Waiting for: 1 module part")
+	game.state.queue_item("factory", "module_part")
+	game.state.stock.add("iron", 1.0)
+	assert_eq(ModulePanel.waiting_text(game.state, "factory"), "Waiting for: 2 iron, 1 aluminum, 1 silicon")
+
+
+func test_waiting_text_updates_when_stock_arrives() -> void:
+	_finish_building()
+	game.state.queue_item("assembly", "junction")
+	panel.open(ids["assembly"])
+	assert_eq(panel._waiting_label.text, "Waiting for: 2 module parts")
+	game.state.stock.add("module_part", 1.0)
+	panel.refresh()
+	assert_eq(panel._waiting_label.text, "Waiting for: 1 module part")
+
+
+func test_no_waiting_text_while_a_job_runs_or_the_queue_is_empty() -> void:
+	_finish_building()
+	panel.open(ids["assembly"])
+	assert_false(panel._waiting_label.visible)
+	game.state.stock.add("module_part", 2.0)
+	game.state.queue_item("assembly", "junction")
+	game.state.step()
+	assert_false(game.state.production.current["assembly"].is_empty())
+	assert_eq(ModulePanel.waiting_text(game.state, "assembly"), "")
+	panel.open(ids["assembly"])
+	assert_false(panel._waiting_label.visible)
+
+
+func test_waiting_text_for_a_queued_repair_names_its_parts() -> void:
+	_finish_building()
+	game.state.production.add_repair(0)
+	assert_eq(ModulePanel.waiting_text(game.state, "assembly"), "Waiting for: 1 module part")
