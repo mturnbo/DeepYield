@@ -92,6 +92,14 @@ func _process(delta: float) -> void:
 				dock.close_door(bay)
 
 
+func ground_positions() -> Dictionary:
+	var positions := {}
+	for id in _ships:
+		if _ships[id].visible:
+			positions[id] = Vector2(_ships[id].global_position.x, _ships[id].global_position.z)
+	return positions
+
+
 func _first_model(kind: String) -> Node3D:
 	var state: GameState = _game.state
 	var built := state.layout.built_nodes(kind)

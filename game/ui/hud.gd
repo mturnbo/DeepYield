@@ -1,13 +1,17 @@
 extends Control
 ## Top bar with the clock, speed buttons and key numbers; side panel with alerts and the checklist.
 
+const ShipPopup = preload("res://game/ui/ship_popup.gd")
 const LIGHT := Color(0.9, 0.92, 0.96)
 const MUTED := Color(0.6, 0.65, 0.75)
 const MINT := Color("7fe8cb")
 const GOLD := Color("f2c96b")
 const LOW_HOURS := 200.0
 
+signal ship_chosen(id: int)
+
 var _game: Node
+var _fleet_buttons: Array[Button] = []
 var _clock_label: Label
 var _speed_buttons := {}
 var _power_label: Label
@@ -22,6 +26,7 @@ var _frame_label: Label
 @onready var _row: HBoxContainer = $TopBar/Margin/Row
 @onready var _alerts: VBoxContainer = $SidePanel/Margin/List/Alerts
 @onready var _checklist: VBoxContainer = $SidePanel/Margin/List/Checklist
+@onready var _fleet: VBoxContainer = $SidePanel/Margin/List/Fleet
 
 
 static func day_hour_text(hour: int) -> String:
@@ -43,6 +48,7 @@ func refresh() -> void:
 	_refresh_numbers(state)
 	_refresh_alerts(state)
 	_refresh_checklist(state)
+	_refresh_fleet(state)
 
 
 func _build_top_bar() -> void:
@@ -130,6 +136,24 @@ func _refresh_checklist(state: GameState) -> void:
 		else:
 			row = _add_row(_checklist, "○", MUTED, item["text"], LIGHT)
 		row.name = item["id"]
+
+
+func _refresh_fleet(state: GameState) -> void:
+	if _fleet_buttons.size() != state.fleet.ships.size():
+		_rebuild_fleet(state.fleet.ships.size())
+	for ship in state.fleet.ships:
+		_fleet_buttons[ship.id].text = "%s · %s · %d%%" % [ShipPopup.ship_name(ship), ShipPopup.where_text(ship), ShipPopup.condition_percent(ship)]
+
+
+func _rebuild_fleet(count: int) -> void:
+	_clear(_fleet)
+	_fleet_buttons = []
+	for id in count:
+		var button := Button.new()
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.pressed.connect(func() -> void: ship_chosen.emit(id))
+		_fleet.add_child(button)
+		_fleet_buttons.append(button)
 
 
 func _add_row(parent: VBoxContainer, mark: String, mark_color: Color, text: String, text_color: Color) -> HBoxContainer:

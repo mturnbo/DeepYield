@@ -74,3 +74,10 @@ text = "Checklist"
 
 [node name="Checklist" type="VBoxContainer" parent="SidePanel/Margin/List"]
 layout_mode = 2
+
+[node name="FleetTitle" type="Label" parent="SidePanel/Margin/List"]
+layout_mode = 2
+text = "Fleet"
+
+[node name="Fleet" type="VBoxContainer" parent="SidePanel/Margin/List"]
+layout_mode = 2

@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://game/ui/ship_popup.gd" id="1_popup"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.06, 0.08, 0.14, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="ShipPopup" type="PanelContainer"]
+visible = false
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -520.0
+offset_top = 64.0
+offset_right = -264.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("1_popup")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="List" type="VBoxContainer" parent="Margin"]
+layout_mode = 2

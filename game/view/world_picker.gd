@@ -3,8 +3,10 @@ extends Node3D
 ## never arrive here, and clicks while the placement tool is placing are ignored.
 
 signal node_clicked(id: int)
+signal ship_clicked(id: int)
 
 const CLICK_SLOP := 6.0
+const SHIP_PICK_RADIUS := 12.0
 
 var _game: Node
 var _pressed := false
@@ -18,6 +20,17 @@ static func nearest_node(state: GameState, ground: Vector2) -> PlatformNode:
 		var distance := candidate.center.distance_to(ground)
 		if distance <= candidate.size / 2.0 and distance < nearest_distance:
 			nearest = candidate
+			nearest_distance = distance
+	return nearest
+
+
+static func nearest_ship(positions: Dictionary, ground: Vector2) -> int:
+	var nearest := -1
+	var nearest_distance := SHIP_PICK_RADIUS
+	for id in positions:
+		var distance: float = positions[id].distance_to(ground)
+		if distance <= nearest_distance:
+			nearest = id
 			nearest_distance = distance
 	return nearest
 
@@ -49,6 +62,11 @@ func _pick(screen_position: Vector2) -> void:
 	var hit = Plane(Vector3.UP, 0.0).intersects_ray(camera.project_ray_origin(screen_position), camera.project_ray_normal(screen_position))
 	if hit == null:
 		return
-	var picked := nearest_node(_game.state, Vector2(hit.x, hit.z))
+	var ground := Vector2(hit.x, hit.z)
+	var ship_id := nearest_ship(_game.get_node("FleetView").ground_positions(), ground)
+	if ship_id != -1:
+		ship_clicked.emit(ship_id)
+		return
+	var picked := nearest_node(_game.state, ground)
 	if picked != null:
 		node_clicked.emit(picked.id)
