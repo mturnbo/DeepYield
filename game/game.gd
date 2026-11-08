@@ -1,6 +1,7 @@
 extends Node3D
 
 signal stepped
+signal speed_changed
 
 var state: GameState
 var clock: SimClock
@@ -31,6 +32,7 @@ func set_speed(speed: String) -> void:
 	if speed != "paused":
 		_speed_before_pause = speed
 	clock.speed = speed
+	speed_changed.emit()
 
 
 func _unhandled_input(event: InputEvent) -> void:
