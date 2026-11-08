@@ -56,7 +56,7 @@ func _create_visual(state: GameState, platform_node: PlatformNode) -> void:
 	var holder := Node3D.new()
 	holder.position = world_position(platform_node.center)
 	add_child(holder)
-	holder.add_child(_make_model(platform_node.kind))
+	holder.add_child(make_model(platform_node.kind))
 	if platform_node.parent_port >= 0:
 		_add_frame_pieces(state, holder, platform_node)
 	visuals[platform_node.id] = holder
@@ -69,7 +69,7 @@ func _create_visual(state: GameState, platform_node: PlatformNode) -> void:
 		_ice_chunks[platform_node.id] = chunk
 
 
-func _make_model(kind: String) -> Node3D:
+func make_model(kind: String) -> Node3D:
 	var model := Node3D.new()
 	model.set_script(load(MODEL_SCRIPTS[kind]))
 	if kind == "ship_dock":
@@ -98,9 +98,9 @@ func _update_build_look(state: GameState, platform_node: PlatformNode) -> void:
 		if _labels.has(platform_node.id):
 			_labels[platform_node.id].queue_free()
 			_labels.erase(platform_node.id)
-			_set_transparency(holder, 0.0)
+			set_transparency(holder, 0.0)
 		return
-	_set_transparency(holder, GHOST_TRANSPARENCY)
+	set_transparency(holder, GHOST_TRANSPARENCY)
 	if not _labels.has(platform_node.id):
 		var label := Label3D.new()
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -115,11 +115,11 @@ func _update_build_look(state: GameState, platform_node: PlatformNode) -> void:
 	_labels[platform_node.id].text = "Building %d%%" % percent
 
 
-func _set_transparency(root: Node, value: float) -> void:
+func set_transparency(root: Node, value: float) -> void:
 	for child in root.get_children():
 		if child is GeometryInstance3D and not child is Label3D:
 			child.transparency = value
-		_set_transparency(child, value)
+		set_transparency(child, value)
 
 
 func _update_ice(state: GameState) -> void:

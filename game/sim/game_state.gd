@@ -74,12 +74,30 @@ func can_place(kind: String) -> bool:
 	return kits.get(kind, 0) > 0 or assembled.get(kind, 0) > 0
 
 
-func place_first(kind: String, center: Vector2) -> String:
+func check_place_first(kind: String, center: Vector2) -> String:
 	var reason := layout.check_first(kind, center, _arrival_ship)
 	if reason != "":
 		return reason
 	if not can_place(kind):
 		return _missing_reason(kind)
+	return ""
+
+
+func check_place(from_id: int, port: int, run: int, kind: String) -> String:
+	var reason := layout.check_placement(from_id, port, run, kind)
+	if reason != "":
+		return reason
+	if not can_place(kind):
+		return _missing_reason(kind)
+	if not stock.has_all({"frame_piece": float(run)}):
+		return "Not enough frame pieces"
+	return ""
+
+
+func place_first(kind: String, center: Vector2) -> String:
+	var reason := check_place_first(kind, center)
+	if reason != "":
+		return reason
 	var site_work := _take_module(kind)
 	var new_node := layout.add_first(kind, center)
 	construction.add_site(new_node.id, site_work)
@@ -87,15 +105,10 @@ func place_first(kind: String, center: Vector2) -> String:
 
 
 func place(from_id: int, port: int, run: int, kind: String) -> String:
-	var reason := layout.check_placement(from_id, port, run, kind)
+	var reason := check_place(from_id, port, run, kind)
 	if reason != "":
 		return reason
-	if not can_place(kind):
-		return _missing_reason(kind)
-	var frame_cost := {"frame_piece": float(run)}
-	if not stock.has_all(frame_cost):
-		return "Not enough frame pieces"
-	stock.take_all(frame_cost)
+	stock.take_all({"frame_piece": float(run)})
 	var site_work := _take_module(kind) + run * float(balance["work"]["frame_piece"])
 	var new_node := layout.add(from_id, port, run, kind)
 	construction.add_site(new_node.id, site_work)

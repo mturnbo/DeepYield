@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://game/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="2_rig"]
@@ -7,6 +7,9 @@
 [ext_resource type="Script" path="res://design/space/comet.gd" id="5_comet"]
 [ext_resource type="Script" path="res://design/ships/arrival_ship.gd" id="6_arrival"]
 [ext_resource type="Script" path="res://game/view/platform_view.gd" id="7_platform"]
+
+[ext_resource type="Script" path="res://game/view/placement_tool.gd" id="8_placement"]
+[ext_resource type="PackedScene" path="res://game/ui/build_menu.tscn" id="9_menu"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -73,4 +76,12 @@ script = ExtResource("7_platform")
 
 [node name="FleetView" type="Node3D" parent="."]
 
+[node name="PlacementTool" type="Node3D" parent="."]
+script = ExtResource("8_placement")
+
 [node name="UI" type="CanvasLayer" parent="."]
+
+[node name="BuildMenu" parent="UI" instance=ExtResource("9_menu")]
+
+[connection signal="item_chosen" from="UI/BuildMenu" to="PlacementTool" method="start"]
+[connection signal="placed" from="PlacementTool" to="UI/BuildMenu" method="refresh"]
