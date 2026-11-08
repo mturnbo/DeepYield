@@ -12,6 +12,7 @@ var assembled: Dictionary = {}
 var crew := 12
 var robots := 20
 var construction: Construction
+var power: Power
 var outcome := ""
 var collapse_reason := ""
 var _arrival_ship: Vector2
@@ -23,6 +24,7 @@ func _init(game_balance: Dictionary, seed: int) -> void:
 	layout = PlatformLayout.new(balance["layout"])
 	storage = Storage.new(balance["storage"])
 	construction = Construction.new(balance["work"])
+	power = Power.new(balance)
 	crew = int(balance["start"]["crew"])
 	robots = int(balance["start"]["robots"])
 	stock.add("frame_piece", float(balance["start"]["frame_pieces"]))
@@ -36,6 +38,9 @@ func step() -> void:
 	if outcome != "":
 		return
 	_step_construction()
+	if power.step(layout, storage, crew) == "energy":
+		outcome = "collapsed"
+		collapse_reason = "energy"
 	hour += 1
 
 
@@ -72,7 +77,20 @@ func place(from_id: int, port: int, run: int, kind: String) -> String:
 
 
 func is_running(node_id: int) -> bool:
-	return layout.node(node_id).built
+	if not layout.node(node_id).built:
+		return false
+	var crewed: bool = balance["modules"][layout.node(node_id).kind]["crewed"]
+	if crewed and not power.operated.get(node_id, false):
+		return false
+	return power.powered.get(node_id, false)
+
+
+func speed_of(node_id: int) -> float:
+	if not is_running(node_id):
+		return 0.0
+	if power.on_battery:
+		return float(balance["power"]["battery_speed"])
+	return 1.0
 
 
 func end_run() -> void:
