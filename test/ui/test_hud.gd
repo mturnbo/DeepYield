@@ -12,6 +12,10 @@ func before_each() -> void:
 	hud = game.get_node("UI/Hud")
 
 
+func after_each() -> void:
+	await get_tree().process_frame
+
+
 func test_day_hour_text() -> void:
 	assert_eq(Hud.day_hour_text(0), "Day 1, 00:00")
 	assert_eq(Hud.day_hour_text(38), "Day 2, 14:00")

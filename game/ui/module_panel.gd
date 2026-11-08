@@ -10,20 +10,21 @@ const RED := Color("e5534b")
 const FLOWS := {
 	"command": {"in": "Nothing", "out": "The suggested build order"},
 	"ship_dock": {"in": "Mining ships and their cargo", "out": "Raw metal and gas to storage, argon to the refinery"},
-	"fusion_generator": {"in": "Hydrogen", "out": "60 MW of power for every module"},
+	"fusion_generator": {"in": "Hydrogen", "out": "Power for every module"},
 	"refinery": {"in": "Raw metal, argon for magnesium and aluminum", "out": "Refined metal for the factory and assembly"},
 	"factory": {"in": "Refined metal", "out": "Frame pieces and module parts"},
 	"assembly": {"in": "Parts and refined metal", "out": "Modules, mining ships, robots and ship repairs"},
 	"gas_storage": {"in": "Hydrogen, helium and nitrogen from the dock", "out": "Hydrogen for the generator, nitrogen for air"},
 	"metal_storage": {"in": "Raw metal from the dock", "out": "Raw metal for the refinery"},
-	"electrolysis_plant": {"in": "Comet ice, nitrogen", "out": "Water and air for up to 32 people"},
-	"habitat": {"in": "Water and air from the plant", "out": "Beds for 20 people"},
+	"electrolysis_plant": {"in": "Comet ice, nitrogen", "out": "Water and air for the crew"},
+	"habitat": {"in": "Water and air from the plant", "out": "Beds for the crew"},
 	"junction": {"in": "—", "out": "—"},
 }
 
 var _game: Node
 var _node_id := -1
 var _refusal := ""
+var _structure_key := []
 var _title_label: Label
 var _close_button: Button
 var _status_label: Label
@@ -82,6 +83,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func open(id: int) -> void:
 	_node_id = id
 	_refusal = ""
+	_structure_key = []
 	visible = true
 	refresh()
 
@@ -94,8 +96,37 @@ func close() -> void:
 func refresh() -> void:
 	if _node_id == -1:
 		return
+	if _structure_of(_game.state) == _structure_key:
+		_update_in_place(_game.state)
+	else:
+		_rebuild()
+
+
+func _structure_of(state: GameState) -> Array:
+	var kind := state.layout.node(_node_id).kind
+	if kind != "factory" and kind != "assembly":
+		return [_node_id]
+	var job: Dictionary = state.production.current[kind]
+	return [_node_id, state.production.queues[kind].duplicate(), job.get("item", ""), job.get("ship_id", -1)]
+
+
+func _update_in_place(state: GameState) -> void:
+	var text := status_text(state, _node_id)
+	_status_label.text = text
+	_status_label.add_theme_color_override("font_color", status_color(text))
+	for material in _storage_rows:
+		_storage_rows[material]["label"].text = _storage_text(state, material)
+		_storage_rows[material]["bar"].value = _storage_fill(state, material)
+	if _job_bar != null:
+		_job_bar.value = _job_fill(state, state.layout.node(_node_id).kind)
+	if _plant_label != null:
+		_plant_label.text = _plant_text(state)
+
+
+func _rebuild() -> void:
 	_clear_content()
 	var state: GameState = _game.state
+	_structure_key = _structure_of(state)
 	var kind := state.layout.node(_node_id).kind
 	_add_header(kind)
 	_add_status(state)
@@ -117,6 +148,8 @@ func _clear_content() -> void:
 	_queue_rows = []
 	_remove_buttons = []
 	_add_buttons = {}
+	_job_bar = null
+	_plant_label = null
 
 
 func _add_label(text: String, color: Color) -> Label:
@@ -165,16 +198,27 @@ func _add_flows(kind: String) -> void:
 
 func _add_storage_rows(state: GameState, kind: String) -> void:
 	for material in state.balance["storage"][kind]:
-		var amount := state.storage.amount(material)
-		var capacity := state.storage.capacity(material)
-		var label := _add_label("%s  %d / %d u" % [display_name(material), int(amount), int(capacity)], LIGHT)
-		var bar := _add_bar(amount / capacity if capacity > 0.0 else 0.0)
+		var label := _add_label(_storage_text(state, material), LIGHT)
+		var bar := _add_bar(_storage_fill(state, material))
 		_storage_rows[material] = {"label": label, "bar": bar}
 
 
+func _storage_text(state: GameState, material: String) -> String:
+	return "%s  %d / %d u" % [display_name(material), int(state.storage.amount(material)), int(state.storage.capacity(material))]
+
+
+func _storage_fill(state: GameState, material: String) -> float:
+	var capacity := state.storage.capacity(material)
+	return state.storage.amount(material) / capacity if capacity > 0.0 else 0.0
+
+
 func _add_plant(state: GameState) -> void:
-	_plant_label = _add_label("Cradle %d / %d u\nSupplying %d of %d people" % [
-		int(state.cradle_ice), int(state.cradle_capacity()), state.life.on_platform, state.crew], LIGHT)
+	_plant_label = _add_label(_plant_text(state), LIGHT)
+
+
+func _plant_text(state: GameState) -> String:
+	return "Cradle %d / %d u\nSupplying %d of %d people" % [
+		int(state.cradle_ice), int(state.cradle_capacity()), state.life.on_platform, state.crew]
 
 
 func _add_production(state: GameState, building: String) -> void:
@@ -197,12 +241,19 @@ func _add_current_job(state: GameState, building: String) -> void:
 		_job_label = _add_label("Idle", MUTED)
 		_job_bar = _add_bar(0.0)
 		return
-	var hours: float = state.balance["recipes"][building][job["item"]]["hours"]
 	var text := "Making " + display_name(job["item"])
 	if job["item"] == "ship_repair":
 		text = "Ship repair — Ship %d" % (int(job["ship_id"]) + 1)
 	_job_label = _add_label(text, LIGHT)
-	_job_bar = _add_bar((hours - job["hours_left"]) / hours)
+	_job_bar = _add_bar(_job_fill(state, building))
+
+
+func _job_fill(state: GameState, building: String) -> float:
+	var job: Dictionary = state.production.current[building]
+	if job.is_empty():
+		return 0.0
+	var hours: float = state.balance["recipes"][building][job["item"]]["hours"]
+	return (hours - job["hours_left"]) / hours
 
 
 func _add_queue(state: GameState, building: String) -> void:
@@ -256,9 +307,9 @@ func _recipe_text(recipe: Dictionary) -> String:
 func _on_add(item: String) -> void:
 	var building: String = _game.state.layout.node(_node_id).kind
 	_refusal = _game.state.queue_item(building, item)
-	refresh()
+	_rebuild()
 
 
 func _on_remove(building: String, index: int) -> void:
 	_game.state.remove_queued(building, index)
-	refresh()
+	_rebuild()

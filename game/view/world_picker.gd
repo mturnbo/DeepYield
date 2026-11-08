@@ -7,6 +7,7 @@ signal node_clicked(id: int)
 const CLICK_SLOP := 6.0
 
 var _game: Node
+var _pressed := false
 var _press_position := Vector2.ZERO
 
 
@@ -21,6 +22,10 @@ static func nearest_node(state: GameState, ground: Vector2) -> PlatformNode:
 	return nearest
 
 
+static func is_click(press: Vector2, release: Vector2) -> bool:
+	return press.distance_to(release) <= CLICK_SLOP
+
+
 func _ready() -> void:
 	_game = get_parent()
 
@@ -31,9 +36,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _game.get_node("PlacementTool").placing:
 		return
 	if event.pressed:
+		_pressed = true
 		_press_position = event.position
-	elif event.position.distance_to(_press_position) <= CLICK_SLOP:
-		_pick(event.position)
+	elif _pressed:
+		_pressed = false
+		if is_click(_press_position, event.position):
+			_pick(event.position)
 
 
 func _pick(screen_position: Vector2) -> void:

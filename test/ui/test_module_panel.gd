@@ -15,6 +15,18 @@ func before_each() -> void:
 	ids = Helpers.place_starter(game.state)
 
 
+func after_each() -> void:
+	await get_tree().process_frame
+
+
+func _mouse_event(pressed: bool, position: Vector2) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = position
+	return event
+
+
 func _finish_building() -> void:
 	Helpers.finish_construction(game.state)
 	game.state.step()
@@ -241,3 +253,59 @@ func _build_plant() -> int:
 	assert_true(placed)
 	Helpers.finish_construction(game.state)
 	return game.state.layout.nodes.size() - 1
+
+
+func test_is_click_within_slop_only() -> void:
+	assert_true(WorldPicker.is_click(Vector2(10, 10), Vector2(12, 12)))
+	assert_true(WorldPicker.is_click(Vector2(10, 10), Vector2(10, 10)))
+	assert_false(WorldPicker.is_click(Vector2(10, 10), Vector2(40, 10)))
+
+
+func test_picker_ignores_release_without_its_own_press() -> void:
+	var picker: Node = game.get_node("WorldPicker")
+	watch_signals(picker)
+	picker._unhandled_input(_mouse_event(false, Vector2(500, 300)))
+	assert_false(picker._pressed)
+	assert_signal_not_emitted(picker, "node_clicked")
+	picker._unhandled_input(_mouse_event(true, Vector2(500, 300)))
+	assert_true(picker._pressed)
+	picker._unhandled_input(_mouse_event(false, Vector2(900, 300)))
+	assert_false(picker._pressed)
+	assert_signal_not_emitted(picker, "node_clicked")
+
+
+func test_stepping_keeps_the_same_buttons_when_nothing_changed() -> void:
+	_finish_building()
+	panel.open(ids["factory"])
+	var button: Button = panel._add_buttons["module_part"]
+	game.stepped.emit()
+	game.state.step()
+	game.stepped.emit()
+	assert_same(panel._add_buttons["module_part"], button)
+	assert_true(button.is_inside_tree())
+
+
+func test_stepping_updates_status_and_job_bar_in_place() -> void:
+	_finish_building()
+	for material in {"iron": 3, "aluminum": 1, "silicon": 1}:
+		game.state.stock.add(material, 5.0)
+	game.state.queue_item("factory", "module_part")
+	game.state.step()
+	panel.open(ids["factory"])
+	var bar: ProgressBar = panel._job_bar
+	var before := bar.value
+	game.state.step()
+	game.stepped.emit()
+	assert_same(panel._job_bar, bar)
+	assert_gt(bar.value, before)
+	game.state.power.on_battery = true
+	game.stepped.emit()
+	assert_eq(panel._status_label.text, "On battery")
+
+
+func test_queue_change_rebuilds_rows() -> void:
+	_finish_building()
+	panel.open(ids["factory"])
+	game.state.queue_item("factory", "frame_piece")
+	game.stepped.emit()
+	assert_eq(panel._queue_rows, ["Frame piece"])
