@@ -7,9 +7,12 @@ const MUTED := Color(0.6, 0.65, 0.75)
 const MINT := Color("7fe8cb")
 const GOLD := Color("f2c96b")
 const LOW_HOURS := 200.0
+const MENU_END_RUN := 0
+const MENU_NEW_RUN := 1
 
 signal ship_chosen(id: int)
 
+var menu_button: MenuButton
 var _game: Node
 var _fleet_buttons: Array[Button] = []
 var _clock_label: Label
@@ -38,7 +41,13 @@ func _ready() -> void:
 	_build_top_bar()
 	_game.stepped.connect(refresh)
 	_game.speed_changed.connect(refresh)
+	_game.run_started.connect(_on_run_started)
 	refresh.call_deferred()
+
+
+func _on_run_started() -> void:
+	_rebuild_fleet(0)
+	refresh()
 
 
 func refresh() -> void:
@@ -64,6 +73,28 @@ func _build_top_bar() -> void:
 	_crew_label = _add_label()
 	_robots_label = _add_label()
 	_frame_label = _add_label()
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_row.add_child(spacer)
+	_add_menu_button()
+
+
+func _add_menu_button() -> void:
+	menu_button = MenuButton.new()
+	menu_button.text = "Menu"
+	var popup := menu_button.get_popup()
+	popup.add_item("End run", MENU_END_RUN)
+	popup.add_item("New run", MENU_NEW_RUN)
+	popup.id_pressed.connect(_on_menu_item)
+	_row.add_child(menu_button)
+
+
+func _on_menu_item(id: int) -> void:
+	if id == MENU_END_RUN:
+		_game.state.end_run()
+		_game.get_node("UI/EndScreen").refresh()
+	elif id == MENU_NEW_RUN:
+		_game.new_run(_game.run_seed + 1)
 
 
 func _add_label() -> Label:

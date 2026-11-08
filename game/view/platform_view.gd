@@ -32,7 +32,18 @@ var _ice_chunks := {}
 func _ready() -> void:
 	_game = get_parent()
 	_game.stepped.connect(sync)
+	_game.run_started.connect(_on_run_started)
 	sync.call_deferred()
+
+
+func _on_run_started() -> void:
+	for id in visuals:
+		remove_child(visuals[id])
+		visuals[id].queue_free()
+	visuals.clear()
+	_labels.clear()
+	_ice_chunks.clear()
+	sync()
 
 
 func world_position(center: Vector2) -> Vector3:

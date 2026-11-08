@@ -2,8 +2,10 @@ extends Node3D
 
 signal stepped
 signal speed_changed
+signal run_started
 
 var state: GameState
+var run_seed := 0
 var clock: SimClock
 var sub_hour := 0.0
 var keys_locked := false
@@ -12,7 +14,8 @@ var _speed_before_pause := "normal"
 
 func _ready() -> void:
 	var balance := Balance.load_default()
-	state = GameState.new(balance, int(balance["seed"]))
+	run_seed = int(balance["seed"])
+	state = GameState.new(balance, run_seed)
 	clock = SimClock.new(balance["seconds_per_hour"])
 	clock.speed = "paused"
 
@@ -32,6 +35,18 @@ func set_speed(speed: String) -> void:
 	if speed != "paused":
 		_speed_before_pause = speed
 	clock.speed = speed
+	speed_changed.emit()
+
+
+func new_run(seed: int) -> void:
+	run_seed = seed
+	state = GameState.new(Balance.load_default(), run_seed)
+	clock = SimClock.new(state.balance["seconds_per_hour"])
+	clock.speed = "paused"
+	sub_hour = 0.0
+	keys_locked = false
+	_speed_before_pause = "normal"
+	run_started.emit()
 	speed_changed.emit()
 
 

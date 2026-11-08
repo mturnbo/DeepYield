@@ -72,6 +72,7 @@ static func status_color(text: String) -> Color:
 func _ready() -> void:
 	_game = get_parent().get_parent()
 	_game.stepped.connect(refresh)
+	_game.run_started.connect(_on_run_started)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -87,6 +88,10 @@ func open(id: int) -> void:
 	_structure_key = []
 	visible = true
 	refresh()
+
+
+func _on_run_started() -> void:
+	close()
 
 
 func close() -> void:

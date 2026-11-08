@@ -68,6 +68,11 @@ static func _closest_port(offset: Vector2) -> int:
 func _ready() -> void:
 	_game = get_parent()
 	_view = _game.get_node("PlatformView")
+	_game.run_started.connect(_on_run_started)
+
+
+func _on_run_started() -> void:
+	cancel()
 
 
 func start(new_kind: String) -> void:

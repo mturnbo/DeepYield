@@ -12,7 +12,16 @@ var _buttons := {}
 func _ready() -> void:
 	_game = get_parent().get_parent()
 	_game.stepped.connect(refresh)
+	_game.run_started.connect(_on_run_started)
 	refresh.call_deferred()
+
+
+func _on_run_started() -> void:
+	for button in _buttons.values():
+		_list.remove_child(button)
+		button.queue_free()
+	_buttons.clear()
+	refresh()
 
 
 func refresh() -> void:

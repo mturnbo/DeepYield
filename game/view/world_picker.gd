@@ -41,6 +41,11 @@ static func is_click(press: Vector2, release: Vector2) -> bool:
 
 func _ready() -> void:
 	_game = get_parent()
+	_game.run_started.connect(_on_run_started)
+
+
+func _on_run_started() -> void:
+	_pressed = false
 
 
 func _unhandled_input(event: InputEvent) -> void:

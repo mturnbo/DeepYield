@@ -73,6 +73,17 @@ static func _bay_taken(ships: Array[MiningShip], bay: int) -> bool:
 func _ready() -> void:
 	_game = get_parent()
 	_platform = _game.get_node("PlatformView")
+	_game.run_started.connect(_on_run_started)
+
+
+func _on_run_started() -> void:
+	for node in _ships.values() + _chunks.values():
+		remove_child(node)
+		node.queue_free()
+	_ships.clear()
+	_chunks.clear()
+	_fades.clear()
+	_last_bay.clear()
 
 
 func _process(delta: float) -> void:
