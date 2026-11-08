@@ -12,6 +12,15 @@ var keys_locked := false
 var _speed_before_pause := "normal"
 
 
+func _enter_tree() -> void:
+	get_tree().node_added.connect(_on_node_added)
+
+
+func _on_node_added(node: Node) -> void:
+	if node is BaseButton and has_node("UI") and $UI.is_ancestor_of(node):
+		node.focus_mode = Control.FOCUS_NONE
+
+
 func _ready() -> void:
 	var balance := Balance.load_default()
 	run_seed = int(balance["seed"])
@@ -52,6 +61,8 @@ func new_run(seed: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if state.outcome != "":
 		return
 	var focus := get_viewport().gui_get_focus_owner()
 	if focus is LineEdit or focus is TextEdit:
