@@ -14,6 +14,7 @@ var robots := 20
 var construction: Construction
 var power: Power
 var comets: Comets
+var fleet: Fleet
 var outcome := ""
 var collapse_reason := ""
 var _arrival_ship: Vector2
@@ -27,6 +28,7 @@ func _init(game_balance: Dictionary, seed: int) -> void:
 	construction = Construction.new(balance["work"])
 	power = Power.new(balance)
 	comets = Comets.new(balance["comets"], rng)
+	fleet = Fleet.new(balance, int(balance["start"]["mining_ships"]))
 	crew = int(balance["start"]["crew"])
 	robots = int(balance["start"]["robots"])
 	stock.add("frame_piece", float(balance["start"]["frame_pieces"]))
@@ -43,6 +45,7 @@ func step() -> void:
 	if power.step(layout, storage, crew) == "energy":
 		outcome = "collapsed"
 		collapse_reason = "energy"
+	fleet.step(_any_dock_running(), storage, stock)
 	hour += 1
 
 
@@ -95,8 +98,46 @@ func speed_of(node_id: int) -> float:
 	return 1.0
 
 
+func assign_ship(ship_id: int, site: String, materials: Array) -> String:
+	var ship_now := fleet.ship(ship_id)
+	if ship_now == null:
+		return "No such ship"
+	if not ["nebula", "asteroids"].has(site):
+		return "No such site"
+	var site_balance: Dictionary = balance["mining"][site]
+	if materials.is_empty():
+		return "Pick at least one material"
+	for material in materials:
+		if not site_balance["materials"].has(material):
+			return material + " isn't found there"
+	if materials.size() > int(site_balance["max"]):
+		return "Pick up to 3 gases" if site == "nebula" else "Pick up to 2 metals"
+	var new_assignment := {"site": site, "materials": materials.duplicate()}
+	if ship_now.state == "docked" or ship_now.state == "in_cargo":
+		ship_now.assignment = new_assignment
+		ship_now.next_assignment = {}
+	else:
+		ship_now.next_assignment = new_assignment
+	return ""
+
+
+func request_repair(ship_id: int) -> String:
+	var ship_now := fleet.ship(ship_id)
+	if ship_now == null:
+		return "No such ship"
+	ship_now.repair_requested = true
+	return ""
+
+
 func end_run() -> void:
 	outcome = "ended"
+
+
+func _any_dock_running() -> bool:
+	for node in layout.built_nodes("ship_dock"):
+		if is_running(node.id):
+			return true
+	return false
 
 
 func _missing_reason(kind: String) -> String:
