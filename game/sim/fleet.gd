@@ -107,7 +107,7 @@ func _step_trip(ship_now: MiningShip, dock_running: bool) -> void:
 			ship_now.cargo = ship_now.load_for(ship_now.trip_materials, _mining)
 			_start_phase(ship_now, "inbound", ship_now.travel_hours(int(site["back"]), _mining))
 		"inbound":
-			ship_now.condition = maxf(ship_now.condition - float(site["wear"]), 0.0)
+			ship_now.condition = snappedf(maxf(ship_now.condition - float(site["wear"]), 0.0), 0.0001)
 			ship_now.state = "holding"
 			if dock_running:
 				_dock_or_hold(ship_now)

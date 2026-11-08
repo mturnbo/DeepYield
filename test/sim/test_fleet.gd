@@ -74,6 +74,25 @@ func test_wear_after_trip() -> void:
 	assert_almost_eq(state.fleet.ship(0).condition, 0.96, 0.0001)
 
 
+func test_wear_does_not_drift_over_five_trips() -> void:
+	var state := _built_starter()
+	state.assign_ship(0, "asteroids", ["iron"])
+	var ship := state.fleet.ship(0)
+	var arrivals := 0
+	var last_condition := 1.0
+	while arrivals < 5:
+		state.storage.take("iron", 100.0)
+		state.step()
+		if ship.condition != last_condition:
+			arrivals += 1
+			last_condition = ship.condition
+	assert_eq(ship.condition, 0.8)
+	var total := 0
+	for units in ship.load_for(["iron"], Balance.load_default()["mining"]).values():
+		total += units
+	assert_eq(total, 16)
+
+
 func test_holding_when_bays_full() -> void:
 	var state := _built_starter()
 	var fifth := state.fleet.add_ship()
