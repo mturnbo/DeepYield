@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://game/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="2_rig"]
@@ -12,6 +12,8 @@
 [ext_resource type="Script" path="res://game/view/fleet_view.gd" id="10_fleet"]
 [ext_resource type="PackedScene" path="res://game/ui/build_menu.tscn" id="9_menu"]
 [ext_resource type="PackedScene" path="res://game/ui/hud.tscn" id="11_hud"]
+[ext_resource type="Script" path="res://game/view/world_picker.gd" id="12_picker"]
+[ext_resource type="PackedScene" path="res://game/ui/module_panel.tscn" id="13_panel"]
 
 [sub_resource type="Environment" id="Environment_space"]
 background_mode = 1
@@ -82,12 +84,18 @@ script = ExtResource("10_fleet")
 [node name="PlacementTool" type="Node3D" parent="."]
 script = ExtResource("8_placement")
 
+[node name="WorldPicker" type="Node3D" parent="."]
+script = ExtResource("12_picker")
+
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="BuildMenu" parent="UI" instance=ExtResource("9_menu")]
 
 [node name="Hud" parent="UI" instance=ExtResource("11_hud")]
 
+[node name="ModulePanel" parent="UI" instance=ExtResource("13_panel")]
+
+[connection signal="node_clicked" from="WorldPicker" to="UI/ModulePanel" method="open"]
 [connection signal="item_chosen" from="UI/BuildMenu" to="PlacementTool" method="start"]
 [connection signal="placed" from="PlacementTool" to="UI/BuildMenu" method="refresh"]
 [connection signal="placed" from="PlacementTool" to="UI/Hud" method="refresh"]
