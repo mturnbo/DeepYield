@@ -262,3 +262,39 @@ func test_clicking_fleet_row_opens_popup() -> void:
 	hud._fleet_buttons[0].pressed.emit()
 	assert_true(popup.visible)
 	assert_not_null(_find(popup, "Label", "Ship 1"))
+
+
+func test_fleet_list_stays_inside_the_window_with_ten_ships() -> void:
+	while game.state.fleet.ships.size() < 10:
+		game.state.fleet.add_ship()
+	get_tree().root.size = Vector2i(1152, 648)
+	game.stepped.emit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var scroll: ScrollContainer = hud.get_node("SidePanel/Margin/List/FleetScroll")
+	var viewport_height := get_viewport().get_visible_rect().size.y
+	assert_lte(scroll.get_global_rect().end.y, viewport_height)
+	assert_gt(scroll.get_global_rect().size.y, 0.0)
+	assert_eq(scroll.get_child(0).get_child_count(), 10)
+	assert_gt(scroll.get_child(0).get_combined_minimum_size().y, scroll.size.y)
+
+
+func test_popup_stays_inside_the_window_with_scrolling_body() -> void:
+	get_tree().root.size = Vector2i(1152, 400)
+	popup.open(0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_lte(popup.get_global_rect().end.y, get_viewport().get_visible_rect().size.y)
+
+
+func test_popup_and_module_panel_exclude_each_other() -> void:
+	var panel: Node = game.get_node("UI/ModulePanel")
+	Helpers.place_starter(game.state)
+	panel.open(0)
+	assert_true(panel.visible)
+	popup.open(0)
+	assert_true(popup.visible)
+	assert_false(panel.visible)
+	panel.open(0)
+	assert_true(panel.visible)
+	assert_false(popup.visible)

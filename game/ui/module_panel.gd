@@ -81,6 +81,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func open(id: int) -> void:
+	_game.get_node("UI/ShipPopup").close()
 	_node_id = id
 	_refusal = ""
 	_structure_key = []

@@ -7,6 +7,8 @@ const MUTED := Color(0.6, 0.65, 0.75)
 const MINT := Color("7fe8cb")
 const RED := Color("e5534b")
 const DISABLED := Color(1, 1, 1, 0.3)
+const TOP_OFFSET := 64.0
+const WINDOW_MARGIN := 40.0
 const SITES := ["nebula", "asteroids"]
 const LEG_STATES := ["outbound", "working", "inbound", "ice_outbound", "carving", "towing"]
 
@@ -28,7 +30,8 @@ var _fetch_buttons := {}
 var _fetch_label: Label
 var _repair_button: Button
 
-@onready var _list: VBoxContainer = $Margin/List
+@onready var _scroll: ScrollContainer = $Margin/Scroll
+@onready var _list: VBoxContainer = $Margin/Scroll/List
 
 
 static func ship_name(ship: MiningShip) -> String:
@@ -102,6 +105,7 @@ func open(id: int) -> void:
 	_ship_id = id
 	var ship: MiningShip = _game.state.fleet.ship(id)
 	_site = ship.assignment.get("site", "nebula")
+	_game.get_node("UI/ModulePanel").close()
 	_rebuild(ship)
 	visible = true
 	refresh()
@@ -130,6 +134,12 @@ func refresh() -> void:
 		_fetch_buttons[chunk].disabled = not comet_in_reach
 	_repair_button.disabled = ship.repair_requested
 	_repair_button.text = "Repair requested" if ship.repair_requested else "Repair"
+	_fit_to_window()
+
+
+func _fit_to_window() -> void:
+	var available := get_viewport().get_visible_rect().size.y - TOP_OFFSET - WINDOW_MARGIN
+	_scroll.custom_minimum_size.y = minf(_list.get_combined_minimum_size().y, available)
 
 
 func _rebuild(ship: MiningShip) -> void:

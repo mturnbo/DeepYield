@@ -26,7 +26,7 @@ var _frame_label: Label
 @onready var _row: HBoxContainer = $TopBar/Margin/Row
 @onready var _alerts: VBoxContainer = $SidePanel/Margin/List/Alerts
 @onready var _checklist: VBoxContainer = $SidePanel/Margin/List/Checklist
-@onready var _fleet: VBoxContainer = $SidePanel/Margin/List/Fleet
+@onready var _fleet: VBoxContainer = $SidePanel/Margin/List/FleetScroll/Fleet
 
 
 static func day_hour_text(hour: int) -> String:
