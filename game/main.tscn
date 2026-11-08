@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://game/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://design/space/iso_camera_rig.gd" id="2_rig"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://game/view/platform_view.gd" id="7_platform"]
 
 [ext_resource type="Script" path="res://game/view/placement_tool.gd" id="8_placement"]
+[ext_resource type="Script" path="res://game/view/fleet_view.gd" id="10_fleet"]
 [ext_resource type="PackedScene" path="res://game/ui/build_menu.tscn" id="9_menu"]
 
 [sub_resource type="Environment" id="Environment_space"]
@@ -75,6 +76,7 @@ script = ExtResource("6_arrival")
 script = ExtResource("7_platform")
 
 [node name="FleetView" type="Node3D" parent="."]
+script = ExtResource("10_fleet")
 
 [node name="PlacementTool" type="Node3D" parent="."]
 script = ExtResource("8_placement")

@@ -43,6 +43,13 @@ func node_visual(id: int) -> Node3D:
 	return visuals.get(id)
 
 
+func model_of(id: int) -> Node3D:
+	var holder: Node3D = visuals.get(id)
+	if holder == null:
+		return null
+	return holder.get_child(0)
+
+
 func sync() -> void:
 	var state: GameState = _game.state
 	for platform_node in state.layout.nodes:

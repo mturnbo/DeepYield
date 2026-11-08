@@ -71,6 +71,14 @@ func _init() -> void:
 	band_color = Color("f2c230")
 
 
+func bay_position(i: int) -> Vector3:
+	return PORT_DIRECTIONS[i] * hangar_across_flats * 0.27 + Vector3(0, _deck_top(), 0)
+
+
+func door_position(i: int) -> Vector3:
+	return PORT_DIRECTIONS[i] * (hangar_across_flats / 2.0 + 6.0) + Vector3(0, _deck_top(), 0)
+
+
 func open_door(index: int) -> void:
 	_door_target[index] = 1.0
 
