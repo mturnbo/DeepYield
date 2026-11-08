@@ -143,7 +143,7 @@ func fetch_ice(ship_id: int, chunk: int) -> String:
 		return "No such ship"
 	if comets.current(hour) == -1:
 		return "No comet in reach"
-	if not balance["comets"]["chunks"].has(chunk):
+	if not balance["comets"]["chunks"].has(float(chunk)):
 		return "Chunks are 1,000, 2,000 or 3,000 u"
 	if layout.built_nodes("electrolysis_plant").is_empty():
 		return "Build an electrolysis plant first"
