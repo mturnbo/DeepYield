@@ -32,6 +32,7 @@ func _show_entry(key: String, kind: String, text: String, count: int) -> void:
 	if not _buttons.has(key):
 		var button := Button.new()
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.3))
 		button.pressed.connect(func() -> void: item_chosen.emit(kind))
 		_list.add_child(button)
 		_buttons[key] = button
