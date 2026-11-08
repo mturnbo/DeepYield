@@ -82,3 +82,96 @@ func test_power_label_goes_gold_when_short() -> void:
 	hud.refresh()
 	var expected := Hud.GOLD if game.state.power.short else Hud.LIGHT
 	assert_eq(hud._power_label.get_theme_color("font_color"), expected)
+
+
+func _built_generator() -> void:
+	Helpers.place_starter(game.state)
+	Helpers.finish_construction(game.state)
+	game.state.power.demand_mw = 10.0
+
+
+func test_fuel_text_and_colour_below_threshold() -> void:
+	_built_generator()
+	game.state.power.fuel_core_mwh = 1500.0
+	hud.refresh()
+	assert_eq(hud._fuel_label.text, "Fuel %d h" % int(floor(game.state.power.fuel_hours_left(game.state.storage))))
+	assert_lt(game.state.power.fuel_hours_left(game.state.storage), 200.0)
+	assert_eq(hud._fuel_label.get_theme_color("font_color"), Hud.GOLD)
+
+
+func test_fuel_text_and_colour_above_threshold() -> void:
+	_built_generator()
+	game.state.power.fuel_core_mwh = 3000.0
+	hud.refresh()
+	assert_eq(hud._fuel_label.text, "Fuel 300 h")
+	assert_eq(hud._fuel_label.get_theme_color("font_color"), Hud.LIGHT)
+
+
+func test_fuel_exact_text_below_threshold() -> void:
+	_built_generator()
+	game.state.power.fuel_core_mwh = 1000.0
+	hud.refresh()
+	assert_eq(hud._fuel_label.text, "Fuel 100 h")
+
+
+func test_reserve_gold_below_threshold() -> void:
+	game.state.life.reserve = 1800.0
+	hud.refresh()
+	assert_eq(hud._reserve_label.text, "Ship reserve 150 h")
+	assert_eq(hud._reserve_label.get_theme_color("font_color"), Hud.GOLD)
+
+
+func test_reserve_normal_above_threshold() -> void:
+	game.state.life.reserve = 3600.0
+	hud.refresh()
+	assert_eq(hud._reserve_label.text, "Ship reserve 300 h")
+	assert_eq(hud._reserve_label.get_theme_color("font_color"), Hud.LIGHT)
+
+
+func test_ice_text() -> void:
+	game.state.cradle_ice = 42.7
+	hud.refresh()
+	assert_eq(hud._ice_label.text, "Ice 42 u")
+
+
+func test_robots_free_over_total_with_construction_under_way() -> void:
+	Helpers.place_starter(game.state)
+	game.state.step()
+	var busy: int = game.state.construction.robots_busy()
+	assert_gt(busy, 0)
+	hud.refresh()
+	assert_eq(hud._robots_label.text, "Robots %d / %d" % [game.state.robots - busy, game.state.robots])
+
+
+func test_power_label_gold_when_short() -> void:
+	game.state.power.supply_mw = 20.0
+	game.state.power.demand_mw = 35.0
+	game.state.power.short = true
+	hud.refresh()
+	assert_eq(hud._power_label.text, "Power 20 / 35 MW")
+	assert_eq(hud._power_label.get_theme_color("font_color"), Hud.GOLD)
+
+
+func test_power_label_normal_when_not_short() -> void:
+	game.state.power.supply_mw = 20.0
+	game.state.power.demand_mw = 5.0
+	game.state.power.short = false
+	hud.refresh()
+	assert_eq(hud._power_label.text, "Power 20 / 5 MW")
+	assert_eq(hud._power_label.get_theme_color("font_color"), Hud.LIGHT)
+
+
+func test_stepped_signal_refreshes_without_calling_refresh() -> void:
+	hud.refresh()
+	assert_eq(hud._clock_label.text, "Day 1, 00:00")
+	for i in 25:
+		game.state.step()
+	game.stepped.emit()
+	assert_eq(hud._clock_label.text, "Day 2, 01:00")
+
+
+func test_deferred_ready_refresh_fills_the_top_bar() -> void:
+	var fresh: Node = add_child_autofree(load("res://game/main.tscn").instantiate())
+	await get_tree().process_frame
+	assert_eq(fresh.get_node("UI/Hud")._clock_label.text, "Day 1, 00:00")
+	assert_eq(fresh.get_node("UI/Hud")._crew_label.text, "Crew 12")
