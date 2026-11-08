@@ -193,3 +193,19 @@ func test_repair_entry_cannot_be_removed() -> void:
 	state.production.add_repair(0)
 	state.remove_queued("assembly", 0)
 	assert_eq(state.production.queues["assembly"].size(), 1)
+
+
+func test_blocked_first_item_is_not_skipped() -> void:
+	state.stock.add("iron", 7.0)
+	state.stock.add("nickel", 1.0)
+	state.stock.add("silicon", 1.0)
+	state.queue_item("factory", "module_part")
+	state.queue_item("factory", "frame_piece")
+	var frames_before := state.stock.amount("frame_piece")
+	_steps(10)
+	assert_eq(state.stock.amount("iron"), 7.0)
+	assert_eq(state.stock.amount("nickel"), 1.0)
+	assert_eq(state.stock.amount("silicon"), 1.0)
+	assert_true(state.production.current["factory"].is_empty())
+	assert_eq(state.production.queues["factory"], ["module_part", "frame_piece"])
+	assert_eq(state.stock.amount("frame_piece"), frames_before)
