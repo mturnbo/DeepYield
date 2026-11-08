@@ -40,7 +40,8 @@ func step(layout: PlatformLayout, storage: Storage, crew: int) -> String:
 			_burn_fuel(storage, demand_mw)
 	else:
 		var reduced_demand := _shut_down_until_fits(candidates)
-		_burn_fuel(storage, reduced_demand)
+		if generators > 0:
+			_burn_fuel(storage, reduced_demand)
 	return ""
 
 

@@ -48,6 +48,8 @@ func test_short_power_shuts_down_in_order() -> void:
 	assert_eq(state.place(0, 1, 2, "factory"), "")
 	Helpers.finish_construction(state)
 	state.step()
+	assert_eq(state.power.fuel_core_mwh, 86400.0)
+	assert_eq(state.storage.amount("hydrogen"), 0.0)
 	assert_true(state.power.short)
 	assert_almost_eq(state.power.demand_mw, 21.7, 0.001)
 	assert_false(state.is_running(0))
