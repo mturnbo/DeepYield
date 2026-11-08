@@ -37,9 +37,10 @@ func step(layout: PlatformLayout, storage: Storage, crew: int) -> String:
 	if supply_mw >= demand_mw:
 		_power_all(candidates)
 		if generators > 0:
-			_burn_fuel(storage)
+			_burn_fuel(storage, demand_mw)
 	else:
-		_shut_down_until_fits(candidates)
+		var reduced_demand := _shut_down_until_fits(candidates)
+		_burn_fuel(storage, reduced_demand)
 	return ""
 
 
@@ -98,24 +99,25 @@ func _power_all(candidates: Array[PlatformNode]) -> void:
 		powered[candidate.id] = true
 
 
-func _burn_fuel(storage: Storage) -> void:
-	var from_core := minf(demand_mw, fuel_core_mwh)
+func _burn_fuel(storage: Storage, energy_mwh: float) -> void:
+	var from_core := minf(energy_mwh, fuel_core_mwh)
 	fuel_core_mwh -= from_core
-	var remainder := demand_mw - from_core
+	var remainder := energy_mwh - from_core
 	storage.take("hydrogen", remainder / float(_power["mwh_per_hydrogen"]))
 
 
-func _shut_down_until_fits(candidates: Array[PlatformNode]) -> void:
+func _shut_down_until_fits(candidates: Array[PlatformNode]) -> float:
 	short = true
 	_power_all(candidates)
 	var remaining := demand_mw
 	for kind in _power["shutdown_order"]:
 		for candidate in candidates:
 			if remaining <= supply_mw:
-				return
+				return remaining
 			if candidate.kind == kind and powered[candidate.id]:
 				powered[candidate.id] = false
 				remaining -= float(_modules[kind]["power_mw"])
+	return remaining
 
 
 func _run_on_battery(candidates: Array[PlatformNode]) -> String:

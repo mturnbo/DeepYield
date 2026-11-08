@@ -93,10 +93,35 @@ func test_battery_then_collapse() -> void:
 	assert_true(state.power.on_battery)
 	assert_eq(state.speed_of(ids["refinery"]), 0.5)
 	assert_eq(state.outcome, "")
-	for i in 11:
+	for i in 10:
 		state.step()
+	assert_eq(state.outcome, "")
+	state.step()
 	assert_eq(state.outcome, "collapsed")
 	assert_eq(state.collapse_reason, "energy")
+
+
+func test_short_supply_burns_only_the_reduced_demand_and_clears_when_covered() -> void:
+	var weak_balance := Balance.load_default().duplicate(true)
+	weak_balance["power"]["generator_mw"] = 20
+	var state := GameState.new(weak_balance, 1)
+	Helpers.place_starter(state)
+	Helpers.finish_construction(state)
+	state.power.fuel_core_mwh = 1000.0
+	state.step()
+	assert_true(state.power.short)
+	assert_false(state.is_running(0))
+	var running_demand := 0.0
+	for built in state.layout.built_nodes():
+		if state.power.powered.get(built.id, false):
+			running_demand += float(weak_balance["modules"][built.kind]["power_mw"])
+	running_demand += 0.1 * state.layout.frame_piece_count(true)
+	assert_true(running_demand <= 20.0)
+	assert_almost_eq(state.power.fuel_core_mwh, 1000.0 - running_demand, 0.001)
+	state.balance["power"]["generator_mw"] = 60
+	state.step()
+	assert_false(state.power.short)
+	assert_true(state.is_running(0))
 
 
 func test_battery_refills_when_fuel_returns() -> void:
