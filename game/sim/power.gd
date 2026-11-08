@@ -39,7 +39,7 @@ func step(layout: PlatformLayout, storage: Storage, crew: int) -> String:
 		if generators > 0:
 			_burn_fuel(storage)
 	else:
-		_shut_down_until_fits(candidates, layout)
+		_shut_down_until_fits(candidates)
 	return ""
 
 
@@ -105,7 +105,7 @@ func _burn_fuel(storage: Storage) -> void:
 	storage.take("hydrogen", remainder / float(_power["mwh_per_hydrogen"]))
 
 
-func _shut_down_until_fits(candidates: Array[PlatformNode], layout: PlatformLayout) -> void:
+func _shut_down_until_fits(candidates: Array[PlatformNode]) -> void:
 	short = true
 	_power_all(candidates)
 	var remaining := demand_mw
