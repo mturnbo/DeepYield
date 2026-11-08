@@ -7,9 +7,11 @@ const WorldPicker = preload("res://game/view/world_picker.gd")
 var game: Node
 var popup: Node
 var hud: Node
+var original_size: Vector2i
 
 
 func before_each() -> void:
+	original_size = get_tree().root.size
 	game = add_child_autofree(load("res://game/main.tscn").instantiate())
 	popup = game.get_node("UI/ShipPopup")
 	hud = game.get_node("UI/Hud")
@@ -19,6 +21,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	get_tree().root.size = original_size
 	await get_tree().process_frame
 
 
