@@ -13,11 +13,13 @@ var crew := 12
 var robots := 20
 var construction: Construction
 var power: Power
+var life: LifeSupport
 var comets: Comets
 var fleet: Fleet
 var production: Production
 var cradle_ice := 0.0
 var ice_delivered := false
+var first_all_on_platform_hour := -1
 var outcome := ""
 var collapse_reason := ""
 var _arrival_ship: Vector2
@@ -30,6 +32,7 @@ func _init(game_balance: Dictionary, seed: int) -> void:
 	storage = Storage.new(balance["storage"])
 	construction = Construction.new(balance["work"])
 	power = Power.new(balance)
+	life = LifeSupport.new(balance)
 	comets = Comets.new(balance["comets"], rng)
 	production = Production.new(balance)
 	fleet = Fleet.new(balance, int(balance["start"]["mining_ships"]))
@@ -49,6 +52,7 @@ func step() -> void:
 	if power.step(layout, storage, crew) == "energy":
 		outcome = "collapsed"
 		collapse_reason = "energy"
+		return
 	_queue_repairs()
 	production.refine(_first_speed("refinery"), storage, stock)
 	_finish_job(production.work("factory", _first_speed("factory"), stock))
@@ -56,7 +60,14 @@ func step() -> void:
 	var pass_index := comets.current(hour)
 	var comet: Dictionary = comets.passes[pass_index] if pass_index != -1 else {}
 	fleet.step(_any_dock_running(), storage, stock, comet, _deliver_chunk)
+	if life.step(self) == "air_water":
+		outcome = "collapsed"
+		collapse_reason = "air_water"
+		return
+	if first_all_on_platform_hour == -1 and crew > 0 and life.dependent == 0:
+		first_all_on_platform_hour = hour
 	hour += 1
+	_check_goal()
 
 
 func can_place(kind: String) -> bool:
@@ -181,6 +192,22 @@ func remove_queued(building: String, index: int) -> void:
 
 func end_run() -> void:
 	outcome = "ended"
+
+
+func summary() -> Dictionary:
+	return {
+		"outcome": outcome,
+		"reason": collapse_reason,
+		"hours": hour,
+		"reserve_hours_left": life.reserve_hours(crew),
+		"first_all_on_platform_hour": first_all_on_platform_hour,
+	}
+
+
+func _check_goal() -> void:
+	var ended_pass := comets.ended_at(hour)
+	if ended_pass >= int(balance["goal_comet"]) - 1 and life.dependent == 0:
+		outcome = "won"
 
 
 func _deliver_chunk(units: int) -> bool:
