@@ -176,7 +176,7 @@ Turns building materials into parts: frame pieces, fusion generators, module par
 
 **Decided:** A separate module, built early alongside the refinery and assembly so the platform can make new modules.
 
-![Assembly module](art/assembly.svg)
+![Assembly module](art/assembly.png)
 
 ### Assembly
 
@@ -188,11 +188,11 @@ Builds ships, robots, weapons and new modules from parts, from a queue you manag
 - **Puts out:** Ships, robots, turrets, modules, repairs
 - **Power:** 5 MW
 - **Run by:** Human crew; construction robots install what it builds
-- **Look:** Purple band, open gantry bay
+- **Look:** Purple band, an enclosed assembly hall under an arched, ribbed roof with skylights, and a tall two-leaf hangar door in a purple frame
 
 ## Trade, structure and defense
 
-![Trade port module](art/trade_port.svg)
+![Trade port module](art/trade_port.png)
 
 ### Trade port
 
@@ -202,7 +202,7 @@ Where the freighter docks. It loads the materials you've set aside for sale and 
 - **Puts out:** Credits, supplies, new crew
 - **Power:** 3 MW
 - **Run by:** Human crew
-- **Look:** Mint band, crane boom, stacked cargo crates
+- **Look:** Mint band, crane boom, stacked cargo crates, and a cargo lift that raises crates out of a shaft from inside the module base
 
 **Decided:** A pirate target, after the storage modules.
 
@@ -240,7 +240,7 @@ A reinforcing junction with a phased plasma gun on top. The guns fire on their o
 
 **Open:** Is the phased plasma gun the only weapon, or can it be upgraded? Can an existing reinforcing junction be converted into a defense junction?
 
-![Frame truss with rail and train car](art/frame.svg)
+![Frame truss with rail and train car](art/frame.png)
 
 ### Frame and rail
 
@@ -250,7 +250,7 @@ Not a module. Fixed-length truss pieces that connect modules and junctions. A tr
 - **Puts out:** Connections, crew and tank deliveries, power
 - **Power:** 0.1 MW per frame piece, to move the rail cars
 - **Run by:** Automated train cars
-- **Look:** Open grey truss, yellow rail, white train car
+- **Look:** Open grey truss, yellow rail, white monorail train car that straddles the rail on two bogies
 
 **Decided:** The frame carries power from the fusion generators to every module. If frame damage cuts a module off, it keeps working in a limited way on its battery reserve until power is restored. Damaged rail stops tank deliveries beyond that point until robots repair it.
 
